@@ -6,6 +6,7 @@
   <title>FLYHOUSE Property OS</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -246,6 +247,7 @@
             <div class="min-w-0">
               <p class="text-[9px] text-ink-500 uppercase tracking-wider">Área activa</p>
               <p id="area-label" class="text-xs font-semibold text-gold-400 truncate">Property Service</p>
+              <p id="cloud-status" class="text-[10px] text-ink-500 mt-0.5">Nube…</p>
             </div>
             <i data-lucide="chevrons-up-down" class="w-3.5 h-3.5 text-ink-500 flex-shrink-0"></i>
           </button>
@@ -1943,6 +1945,177 @@
     const META_KEY = 'fh_system_meta_v1';
     const TIMER_KEY = 'fh_timer_state_v1';
 
+    // --- Supabase (nube) ---
+    const SB_URL = 'https://zzyadghmqqokxchngltw.supabase.co';
+    const SB_KEY = 'sb_publishable_AMxXlzxoO2sVyaVfsns0VQ_Q49mRMW_';
+    let supabaseClient = null;
+    let _cloudReady = false;
+    let _cloudPushTimer = null;
+    let _cloudLastOk = null;
+
+    function initSupabase() {
+      try {
+        if (typeof window.supabase === 'undefined' || !window.supabase.createClient) {
+          console.warn('Supabase SDK no cargó');
+          return false;
+        }
+        supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
+        _cloudReady = true;
+        return true;
+      } catch (e) {
+        console.error('initSupabase', e);
+        return false;
+      }
+    }
+
+    function buildPersistPayload() {
+      return {
+        data: data,
+        nextProductId: nextProductId,
+        savedAt: new Date().toISOString()
+      };
+    }
+
+    function applyPersistPayload(payload) {
+      if (!payload || !payload.data) return false;
+      data = Object.assign(data, payload.data);
+      if (payload.nextProductId) nextProductId = payload.nextProductId;
+      if (!Array.isArray(data.requerimientos)) data.requerimientos = [];
+      if (!Array.isArray(data.contratos)) data.contratos = [];
+      if (!Array.isArray(data.expertos)) data.expertos = [];
+      if (!Array.isArray(data.clientes)) data.clientes = [];
+      if (!Array.isArray(data.clientesEliminados)) data.clientesEliminados = [];
+      if (!Array.isArray(data.presupuestos)) data.presupuestos = [];
+      if (!data.nextPresupuestoId) data.nextPresupuestoId = 1;
+      if (!data.vistosAlertas || typeof data.vistosAlertas !== 'object') data.vistosAlertas = {};
+      if (!Array.isArray(data.usuarios)) data.usuarios = [];
+      if (!Array.isArray(data.productos)) data.productos = [];
+      if (!Array.isArray(data.storeCategorias)) data.storeCategorias = [];
+      if (!Array.isArray(data.proveedores)) data.proveedores = [];
+      if (!Array.isArray(data.inventario)) data.inventario = [];
+      if (!Array.isArray(data.lifePropiedades)) data.lifePropiedades = [];
+      if (!Array.isArray(data.lifeReservas)) data.lifeReservas = [];
+      if (!Array.isArray(data.lifeHuespedes)) data.lifeHuespedes = [];
+      if (!Array.isArray(data.pedidos)) data.pedidos = [];
+      if (!Array.isArray(data.propiedades)) data.propiedades = [];
+      if (!data.nextProveedorId) data.nextProveedorId = (data.proveedores.length || 0) + 1;
+      if (!data.nextInvId) data.nextInvId = (data.inventario.length || 0) + 1;
+      if (!data.nextUserId) data.nextUserId = (data.usuarios.length || 0) + 1;
+      if (!data.nextReqId) data.nextReqId = (data.requerimientos.length || 0) + 1;
+      if (!data.nextExpertoId) data.nextExpertoId = (data.expertos.length || 0) + 1;
+      if (!data.nextClienteId) data.nextClienteId = (data.clientes.length || 0) + 1;
+      return true;
+    }
+
+    function localDataScore() {
+      try {
+        return (data.usuarios||[]).length + (data.productos||[]).length + (data.contratos||[]).length
+          + (data.requerimientos||[]).length + (data.presupuestos||[]).length + (data.clientes||[]).length
+          + (data.inventario||[]).length + (data.proveedores||[]).length + (data.lifePropiedades||[]).length
+          + (data.pedidos||[]).length + (data.expertos||[]).length;
+      } catch (e) { return 0; }
+    }
+
+    async function cloudPull() {
+      if (!supabaseClient) return null;
+      try {
+        const { data: row, error } = await supabaseClient
+          .from('system_data')
+          .select('payload, updated_at')
+          .eq('id', 'main')
+          .maybeSingle();
+        if (error) {
+          console.error('cloudPull', error);
+          return null;
+        }
+        return row;
+      } catch (e) {
+        console.error('cloudPull', e);
+        return null;
+      }
+    }
+
+    async function cloudPush() {
+      if (!supabaseClient) return false;
+      try {
+        const payload = buildPersistPayload();
+        const { error } = await supabaseClient
+          .from('system_data')
+          .upsert({
+            id: 'main',
+            payload: payload,
+            updated_at: new Date().toISOString()
+          });
+        if (error) {
+          console.error('cloudPush', error);
+          _cloudLastOk = false;
+          return false;
+        }
+        _cloudLastOk = true;
+        return true;
+      } catch (e) {
+        console.error('cloudPush', e);
+        _cloudLastOk = false;
+        return false;
+      }
+    }
+
+    function scheduleCloudPush() {
+      if (!supabaseClient) return;
+      if (_cloudPushTimer) clearTimeout(_cloudPushTimer);
+      _cloudPushTimer = setTimeout(() => {
+        cloudPush().then(ok => {
+          if (ok) {
+            try {
+              const el = document.getElementById('cloud-status');
+              if (el) { el.textContent = 'Nube ✓'; el.className = 'text-[10px] text-emerald-400'; }
+            } catch (e) {}
+          } else {
+            try {
+              const el = document.getElementById('cloud-status');
+              if (el) { el.textContent = 'Nube error'; el.className = 'text-[10px] text-red-400'; }
+            } catch (e) {}
+          }
+        });
+      }, 1200);
+    }
+
+    async function syncCloudOnBoot() {
+      if (!initSupabase()) {
+        console.warn('Sin nube · solo localStorage');
+        return { mode: 'local-only' };
+      }
+      const row = await cloudPull();
+      const cloudPayload = row && row.payload ? row.payload : null;
+      const cloudScore = cloudPayload && cloudPayload.data
+        ? (
+            (cloudPayload.data.usuarios||[]).length + (cloudPayload.data.productos||[]).length
+            + (cloudPayload.data.contratos||[]).length + (cloudPayload.data.requerimientos||[]).length
+            + (cloudPayload.data.presupuestos||[]).length + (cloudPayload.data.clientes||[]).length
+            + (cloudPayload.data.inventario||[]).length + (cloudPayload.data.proveedores||[]).length
+            + (cloudPayload.data.lifePropiedades||[]).length + (cloudPayload.data.expertos||[]).length
+          )
+        : 0;
+      const localScore = localDataScore();
+
+      // Nube tiene data real → usar nube
+      if (cloudScore > 0) {
+        applyPersistPayload(cloudPayload);
+        try { localStorage.setItem(DATA_KEY, JSON.stringify(buildPersistPayload())); } catch (e) {}
+        return { mode: 'from-cloud', cloudScore, localScore };
+      }
+      // Nube vacía y local tiene data → subir local (migración)
+      if (localScore > 0) {
+        const ok = await cloudPush();
+        return { mode: ok ? 'migrated-to-cloud' : 'migrate-failed', cloudScore, localScore };
+      }
+      // Ambos vacíos
+      await cloudPush();
+      return { mode: 'empty', cloudScore, localScore };
+    }
+
+
+
     function shrinkDataUrl(dataUrl, maxW, quality) {
       try {
         if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image')) return dataUrl;
@@ -2002,6 +2175,7 @@
         };
         localStorage.setItem(DATA_KEY, JSON.stringify(payload));
         localStorage.setItem(META_KEY, JSON.stringify({ savedAt: payload.savedAt, productos: (data.productos||[]).length, proveedores: (data.proveedores||[]).length }));
+        try { scheduleCloudPush(); } catch (e) {}
         return true;
       } catch (e) {
         console.error('Error guardando', e);
@@ -2020,6 +2194,7 @@
           });
           const payload2 = { data: data, nextProductId: nextProductId, savedAt: new Date().toISOString() };
           localStorage.setItem(DATA_KEY, JSON.stringify(payload2));
+          try { scheduleCloudPush(); } catch (e) {}
           mostrarToast('Guardado tras compactar fotos');
           return true;
         } catch (e2) {
@@ -2126,10 +2301,60 @@
       }
     }
 
+    // Sync nube al arrancar (async)
+    window._fhCloudSync = syncCloudOnBoot().then(r => {
+      console.log('FLYHOUSE cloud sync', r);
+      try {
+        const el = document.getElementById('cloud-status');
+        if (el) {
+          if (r.mode === 'from-cloud') { el.textContent = 'Nube ✓'; el.className = 'text-[10px] text-emerald-400'; }
+          else if (r.mode === 'migrated-to-cloud') { el.textContent = 'Data migrada a nube ✓'; el.className = 'text-[10px] text-emerald-400'; }
+          else if (r.mode === 'local-only') { el.textContent = 'Solo local'; el.className = 'text-[10px] text-amber-400'; }
+          else if (r.mode === 'error') { el.textContent = 'Nube error'; el.className = 'text-[10px] text-red-400'; }
+          else { el.textContent = 'Nube lista'; el.className = 'text-[10px] text-ink-400'; }
+        }
+        // Siempre refrescar lista de usuarios del login tras la nube
+        try { if (typeof renderLoginUsers === 'function') renderLoginUsers(); } catch (e) {}
+        try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch (e) {}
+        if (r.mode === 'from-cloud' || r.mode === 'migrated-to-cloud') {
+          if (sessionStorage.getItem('fh_logged') === '1') {
+            try {
+              updateSidebarUser();
+              if (typeof navigate === 'function') navigate(window.currentView || 'dashboard');
+              if (typeof actualizarBadgesSidebar === 'function') actualizarBadgesSidebar();
+            } catch (e) {}
+          }
+          if (r.mode === 'from-cloud') {
+            try { mostrarToast('Data cargada desde la nube ✓'); } catch (e) {}
+          }
+          if (r.mode === 'migrated-to-cloud') {
+            try { mostrarToast('Tu data local se subió a la nube ✓'); } catch (e) {}
+          }
+        }
+      } catch (e) { console.error(e); }
+      return r;
+    }).catch(e => {
+      console.error(e);
+      try {
+        const el = document.getElementById('cloud-status');
+        if (el) { el.textContent = 'Nube error'; el.className = 'text-[10px] text-red-400'; }
+      } catch (e2) {}
+      return { mode: 'error' };
+    });
+
     function guardarSistemaAhora() {
       if (saveSystemData()) {
-        mostrarToast('Data guardada en este navegador ✓');
+        mostrarToast('Data guardada (local + nube) ✓');
       }
+    }
+
+    async function forzarSyncNube() {
+      mostrarToast('Sincronizando con la nube…');
+      if (!supabaseClient) initSupabase();
+      const ok = await cloudPush();
+      if (ok) mostrarToast('Nube actualizada ✓');
+      else mostrarToast('No se pudo subir a la nube · revisa conexión');
+      return ok;
     }
 
     function actualizarSistema() {
@@ -6225,10 +6450,77 @@ inventario: () => {
         mostrarToast('Presupuesto eliminado');
       });
     }
+    function compactPresForShare(p) {
+      // Payload portable: texto + fotos solo si son pequeñas
+      const slimFoto = (f) => {
+        if (!f || typeof f !== 'string') return null;
+        if (f.length > 120000) return null; // demasiado grande para URL
+        return f;
+      };
+      return {
+        id: p.id,
+        token: p.token || p.id,
+        titulo: p.titulo,
+        cliente: p.cliente,
+        lugar: p.lugar,
+        historia: p.historia,
+        equipo: p.equipo,
+        equipoList: p.equipoList,
+        tools: p.tools,
+        toolsList: (p.toolsList || []).map(t => ({
+          invId: t.invId, nombre: t.nombre, propietario: t.propietario,
+          precio: t.precio, periodo: t.periodo,
+          foto: slimFoto(t.foto)
+        })),
+        diasEjecucion: p.diasEjecucion,
+        incluyeIgv: p.incluyeIgv,
+        descTipo: p.descTipo,
+        descValor: p.descValor,
+        subPartidas: p.subPartidas,
+        subRental: p.subRental,
+        igv: p.igv,
+        totalOriginal: p.totalOriginal,
+        total: p.total,
+        partidas: (p.partidas || []).map(pt => ({
+          tipo: pt.tipo, desc: pt.desc, marca: pt.marca, cant: pt.cant,
+          unidad: pt.unidad, precio: pt.precio, monto: pt.monto,
+          categoria: pt.categoria, subcategoria: pt.subcategoria,
+          foto: slimFoto(pt.foto)
+        })),
+        fotoAntes: slimFoto(p.fotoAntes),
+        fotoDespues: slimFoto(p.fotoDespues),
+        estado: p.estado || 'Enviado',
+        share: true
+      };
+    }
+    function encodePresShare(p) {
+      try {
+        const json = JSON.stringify(compactPresForShare(p));
+        // base64 url-safe
+        const b64 = btoa(unescape(encodeURIComponent(json)));
+        return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
+      } catch (e) { return ''; }
+    }
+    function decodePresShare(raw) {
+      try {
+        let s = String(raw).replace(/-/g, '+').replace(/_/g, '/');
+        while (s.length % 4) s += '=';
+        const json = decodeURIComponent(escape(atob(s)));
+        return JSON.parse(json);
+      } catch (e) { return null; }
+    }
     function linkPresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
       if (!p) return '';
       const base = location.href.split('?')[0].split('#')[0];
+      if (!p.token) {
+        p.token = 'P' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      }
+      const payload = encodePresShare(p);
+      // Prefer hash payload so it works cross-device without backend
+      if (payload && payload.length < 500000) {
+        return base + '?pres=' + encodeURIComponent(p.token) + '#d=' + payload;
+      }
       return base + '?pres=' + encodeURIComponent(p.token || p.id);
     }
     function copiarLinkPresupuesto(id) {
@@ -6236,15 +6528,33 @@ inventario: () => {
       if (!p) return;
       if (p.estado === 'Borrador') {
         p.estado = 'Enviado';
-        saveSystemData();
       }
+      if (!p.token) {
+        p.token = 'P' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      }
+      saveSystemData();
       const url = linkPresupuesto(id);
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(() => mostrarToast('Link copiado · envíalo al cliente')).catch(() => prompt('Copia este link:', url));
+        navigator.clipboard.writeText(url).then(() => mostrarToast('Link copiado · el cliente puede abrirlo en cualquier dispositivo')).catch(() => prompt('Copia este link:', url));
       } else {
         prompt('Copia este link:', url);
       }
       navigate('presupuestos');
+    }
+    function mergePresFromShare(shared) {
+      if (!shared || !shared.id) return null;
+      if (!data.presupuestos) data.presupuestos = [];
+      let local = data.presupuestos.find(x => String(x.id) === String(shared.id) || (shared.token && String(x.token) === String(shared.token)));
+      if (local) {
+        // keep local response if already accepted; else refresh content
+        if (local.estado !== 'Aceptado') {
+          Object.assign(local, shared, { estado: local.estado || shared.estado });
+        }
+        return local;
+      }
+      data.presupuestos.unshift(Object.assign({}, shared, { oculto: false }));
+      try { saveSystemData(); } catch (e) {}
+      return data.presupuestos[0];
     }
     function abrirVistaClientePresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
@@ -6410,18 +6720,33 @@ inventario: () => {
         }
       }
     }
-    // Abrir presupuesto por URL ?pres=token
+    // Abrir presupuesto por URL ?pres=token  (+ #d=payload para compartir online)
     (function initPresFromUrl() {
       try {
         const q = new URLSearchParams(location.search).get('pres');
-        if (!q) return;
+        const hash = (location.hash || '').replace(/^#/, '');
+        const hashParams = new URLSearchParams(hash.startsWith('d=') ? hash : hash.replace(/^d=/, 'd='));
+        let dParam = null;
+        if (hash.startsWith('d=')) dParam = hash.slice(2);
+        else if (hash.includes('d=')) dParam = new URLSearchParams(hash).get('d');
         const tryOpen = () => {
-          const p = (data.presupuestos || []).find(x => String(x.token) === q || String(x.id) === q);
+          let p = null;
+          if (dParam && typeof decodePresShare === 'function') {
+            const shared = decodePresShare(dParam);
+            if (shared) p = mergePresFromShare(shared);
+          }
+          if (!p && q) {
+            p = (data.presupuestos || []).find(x => String(x.token) === q || String(x.id) === q);
+          }
           if (p) {
-            if (p.estado === 'Borrador' || p.estado === 'Enviado') { p.estado = 'Visto'; try { saveSystemData(); } catch (e) {} }
+            if (p.estado === 'Borrador' || p.estado === 'Enviado') {
+              p.estado = 'Visto';
+              try { saveSystemData(); } catch (e) {}
+            }
             renderVistaClientePres(p);
           }
         };
+        if (!q && !dParam) return;
         if (typeof data !== 'undefined' && data.presupuestos) setTimeout(tryOpen, 400);
         else setTimeout(tryOpen, 1200);
       } catch (e) {}
