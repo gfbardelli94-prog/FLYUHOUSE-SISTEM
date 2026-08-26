@@ -6512,30 +6512,42 @@ inventario: () => {
     function linkPresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
       if (!p) return '';
-      const base = location.href.split('?')[0].split('#')[0];
+      // Siempre URL corta: la data vive en la nube (Supabase)
+      const base = location.origin + location.pathname.replace(/\/$/, '') || location.href.split('?')[0].split('#')[0];
+      const cleanBase = (location.origin + (location.pathname || '/')).replace(/\/index\.html$/i, '/').replace(/\/$/, '') || location.origin;
+      // Prefer production-style root
+      let root = location.origin;
+      if (location.pathname && location.pathname !== '/' && !location.pathname.endsWith('.html')) {
+        // keep path if app is in subfolder
+        root = location.origin + location.pathname.replace(/\/[^/]*$/, '');
+        if (root.endsWith('/')) root = root.slice(0, -1);
+      }
       if (!p.token) {
-        p.token = 'P' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        p.token = 'fh' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       }
-      const payload = encodePresShare(p);
-      // Prefer hash payload so it works cross-device without backend
-      if (payload && payload.length < 500000) {
-        return base + '?pres=' + encodeURIComponent(p.token) + '#d=' + payload;
-      }
-      return base + '?pres=' + encodeURIComponent(p.token || p.id);
+      return root + '/?pres=' + encodeURIComponent(p.token);
     }
-    function copiarLinkPresupuesto(id) {
+    async function copiarLinkPresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
       if (!p) return;
-      if (p.estado === 'Borrador') {
-        p.estado = 'Enviado';
-      }
+      if (p.estado === 'Borrador') p.estado = 'Enviado';
       if (!p.token) {
-        p.token = 'P' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        p.token = 'fh' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       }
       saveSystemData();
+      mostrarToast('Sincronizando presupuesto en la nube…');
+      try {
+        if (!supabaseClient) initSupabase();
+        if (typeof cloudPush === 'function') {
+          const ok = await cloudPush();
+          if (!ok) {
+            mostrarToast('No se pudo subir a la nube · revisa conexión');
+          }
+        }
+      } catch (e) { console.error(e); }
       const url = linkPresupuesto(id);
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(() => mostrarToast('Link copiado · el cliente puede abrirlo en cualquier dispositivo')).catch(() => prompt('Copia este link:', url));
+        navigator.clipboard.writeText(url).then(() => mostrarToast('Link corto copiado ✓')).catch(() => prompt('Copia este link:', url));
       } else {
         prompt('Copia este link:', url);
       }
@@ -6720,23 +6732,48 @@ inventario: () => {
         }
       }
     }
-    // Abrir presupuesto por URL ?pres=token  (+ #d=payload para compartir online)
+    // Abrir presupuesto por URL corta ?pres=token (data desde la nube)
     (function initPresFromUrl() {
       try {
         const q = new URLSearchParams(location.search).get('pres');
-        const hash = (location.hash || '').replace(/^#/, '');
-        const hashParams = new URLSearchParams(hash.startsWith('d=') ? hash : hash.replace(/^d=/, 'd='));
-        let dParam = null;
-        if (hash.startsWith('d=')) dParam = hash.slice(2);
-        else if (hash.includes('d=')) dParam = new URLSearchParams(hash).get('d');
-        const tryOpen = () => {
-          let p = null;
-          if (dParam && typeof decodePresShare === 'function') {
-            const shared = decodePresShare(dParam);
-            if (shared) p = mergePresFromShare(shared);
+        if (!q) return;
+
+        async function resolvePresupuesto() {
+          let p = (data.presupuestos || []).find(x => String(x.token) === q || String(x.id) === q);
+          if (p) return p;
+          // Cargar desde nube
+          try {
+            if (!supabaseClient) initSupabase();
+            const row = await cloudPull();
+            if (row && row.payload && row.payload.data) {
+              applyPersistPayload(row.payload);
+              try { localStorage.setItem(DATA_KEY, JSON.stringify(buildPersistPayload())); } catch (e) {}
+              p = (data.presupuestos || []).find(x => String(x.token) === q || String(x.id) === q);
+            }
+          } catch (e) { console.error('pres cloud', e); }
+          // Fallback: payload largo en hash (links antiguos)
+          if (!p) {
+            const hash = (location.hash || '').replace(/^#/, '');
+            let dParam = null;
+            if (hash.startsWith('d=')) dParam = hash.slice(2);
+            if (dParam && typeof decodePresShare === 'function') {
+              const shared = decodePresShare(dParam);
+              if (shared) p = mergePresFromShare(shared);
+            }
           }
-          if (!p && q) {
-            p = (data.presupuestos || []).find(x => String(x.token) === q || String(x.id) === q);
+          return p;
+        }
+
+        const openWhenReady = async () => {
+          // esperar un poco a syncCloudOnBoot si existe
+          try {
+            if (window._fhCloudSync) await Promise.race([window._fhCloudSync, new Promise(r => setTimeout(r, 4000))]);
+          } catch (e) {}
+          let p = await resolvePresupuesto();
+          if (!p) {
+            // reintento
+            await new Promise(r => setTimeout(r, 800));
+            p = await resolvePresupuesto();
           }
           if (p) {
             if (p.estado === 'Borrador' || p.estado === 'Enviado') {
@@ -6744,12 +6781,13 @@ inventario: () => {
               try { saveSystemData(); } catch (e) {}
             }
             renderVistaClientePres(p);
+          } else {
+            console.warn('Presupuesto no encontrado:', q);
+            try { alert('No se encontró este presupuesto. Puede haber sido eliminado o aún no sincronizado.'); } catch (e) {}
           }
         };
-        if (!q && !dParam) return;
-        if (typeof data !== 'undefined' && data.presupuestos) setTimeout(tryOpen, 400);
-        else setTimeout(tryOpen, 1200);
-      } catch (e) {}
+        setTimeout(openWhenReady, 300);
+      } catch (e) { console.error(e); }
     })();
 
 
