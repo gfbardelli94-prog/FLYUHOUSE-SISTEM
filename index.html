@@ -6042,8 +6042,8 @@ inventario: () => {
                 </select>
               </div>
               <div class="pres-src-manual ${tipo!=='manual' && tipo!=='categoria'?'hidden':''}">
-                <label class="text-[10px] font-semibold text-ink-500 uppercase">${tipo==='categoria'?'Categoría':'Detalle manual'}</label>
-                <input class="pres-cat w-full px-2.5 py-2 text-sm border border-gold-200 rounded-lg bg-white" list="pres-cat-datalist" placeholder="Ej: Andamio, mano de obra…" value="${esc(pt && pt.categoria)}">
+                <label class="text-[10px] font-semibold text-ink-500 uppercase">${tipo==='categoria'?'Categoría':'Nombre del ítem *'}</label>
+                <input class="pres-cat w-full px-2.5 py-2 text-sm border border-gold-200 rounded-lg bg-white" list="pres-cat-datalist" placeholder="Ej: Flete comercial, Mano de obra, Andamio…" value="${esc(pt && (pt.titulo || pt.categoria))}" oninput="syncPresDescFromCat(this)">
                 <div class="pres-subcat-wrap ${tipo!=='categoria'?'hidden':''} mt-1">
                   <input class="pres-subcat w-full px-2.5 py-2 text-sm border border-gold-200 rounded-lg bg-white" placeholder="Subcategoría (opcional)" value="${esc(pt && pt.subcategoria)}">
                   <button type="button" onclick="guardarCategoriaPres(this)" class="mt-1 text-[10px] font-semibold text-gold-700 hover:underline">+ Guardar categoría en el sistema</button>
@@ -6051,8 +6051,8 @@ inventario: () => {
               </div>
             </div>
             <div>
-              <label class="text-[10px] font-semibold text-ink-500 uppercase">Descripción · qué se hace</label>
-              <input class="pres-desc w-full px-2.5 py-2 text-sm border border-gold-200 rounded-lg bg-white" placeholder="Descripción para el cliente" value="${esc(pt && pt.desc)}" oninput="calcTotalPres()">
+              <label class="text-[10px] font-semibold text-ink-500 uppercase">Descripción para el cliente *</label>
+              <textarea class="pres-desc w-full px-2.5 py-2 text-sm border border-gold-200 rounded-lg bg-white" rows="2" placeholder="Explica qué incluye este ítem (el cliente lo verá). Ej: Traslado de materiales a obra en Naplo, 1 viaje." oninput="calcTotalPres()">${(pt && pt.desc) ? String(pt.desc).replace(/</g,'&lt;') : ''}</textarea>
             </div>
             <div class="pres-adjunto-wrap ${tipo==='store'?'hidden':''}">
               <label class="text-[10px] font-semibold text-ink-500 uppercase">Adjuntar imagen</label>
@@ -6212,13 +6212,24 @@ inventario: () => {
         : '';
       return { subPartidas: t, rental, igv, total, descMonto, final };
     }
+    function syncPresDescFromCat(inp) {
+      const row = inp.closest('.pres-partida');
+      if (!row) return;
+      const desc = row.querySelector('.pres-desc');
+      if (!desc) return;
+      // Si la descripción está vacía o era igual al valor anterior del nombre, sincronizar
+      if (!desc.value.trim() || desc.dataset.synced === '1') {
+        desc.value = (inp.value || '').trim();
+        desc.dataset.synced = '1';
+      }
+    }
     function leerPartidasPres() {
       const out = [];
       document.querySelectorAll('#pres-partidas .pres-partida').forEach(row => {
         const tipo = row.querySelector('.pres-tipo')?.value || 'store';
         const productoId = row.querySelector('.pres-prod')?.value || '';
         const proveedorId = row.querySelector('.pres-prov')?.value || '';
-        const desc = (row.querySelector('.pres-desc')?.value || '').trim();
+        let desc = (row.querySelector('.pres-desc')?.value || '').trim();
         const marca = (row.querySelector('.pres-marca')?.value || '').trim();
         const cant = parseFloat(row.querySelector('.pres-cant')?.value) || 0;
         const unidad = (row.querySelector('.pres-unidad')?.value || 'und').trim();
@@ -6226,8 +6237,38 @@ inventario: () => {
         const monto = cant * precio;
         const categoria = (row.querySelector('.pres-cat')?.value || '').trim();
         const subcategoria = (row.querySelector('.pres-subcat')?.value || '').trim();
+        // Título visible para el cliente
+        let titulo = categoria || '';
+        if (!titulo && productoId) {
+          const opt = row.querySelector('.pres-prod')?.selectedOptions?.[0];
+          titulo = (opt && opt.getAttribute('data-nombre')) || opt?.text || '';
+        }
+        if (!titulo && proveedorId) {
+          const opt = row.querySelector('.pres-prov')?.selectedOptions?.[0];
+          titulo = (opt && (opt.getAttribute('data-nombre') || opt.text)) || '';
+        }
+        // Si no hay descripción, usar título; si no hay título, usar descripción
+        if (!desc && titulo) desc = titulo;
+        if (!titulo && desc) titulo = desc.split(/[\n.]/)[0].slice(0, 80);
+        if (!titulo) titulo = 'Ítem de presupuesto';
         const foto = row.dataset.customFoto || (row.querySelector('.pres-prod')?.selectedOptions[0]?.getAttribute('data-foto')) || null;
-        if (desc || monto) out.push({ tipo, productoId: productoId || null, proveedorId: proveedorId && proveedorId !== '__manual__' ? proveedorId : null, categoria, subcategoria, desc, marca, cant, unidad, precio, monto, foto });
+        if (titulo || desc || monto) {
+          out.push({
+            tipo,
+            productoId: productoId || null,
+            proveedorId: proveedorId && proveedorId !== '__manual__' ? proveedorId : null,
+            titulo,
+            categoria: categoria || titulo,
+            subcategoria,
+            desc,
+            marca,
+            cant,
+            unidad,
+            precio,
+            monto,
+            foto
+          });
+        }
       });
       return out;
     }
@@ -6482,7 +6523,9 @@ inventario: () => {
         totalOriginal: p.totalOriginal,
         total: p.total,
         partidas: (p.partidas || []).map(pt => ({
-          tipo: pt.tipo, desc: pt.desc, marca: pt.marca, cant: pt.cant,
+          tipo: pt.tipo,
+          titulo: pt.titulo || pt.categoria || pt.desc,
+          desc: pt.desc, marca: pt.marca, cant: pt.cant,
           unidad: pt.unidad, precio: pt.precio, monto: pt.monto,
           categoria: pt.categoria, subcategoria: pt.subcategoria,
           foto: slimFoto(pt.foto)
@@ -6606,14 +6649,19 @@ inventario: () => {
               </div>
               <div class="divide-y divide-white/5">
                 ${partidas.length ? partidas.map(pt => {
-                  const det = [pt.marca, (pt.cant ? pt.cant + ' ' + (pt.unidad||'und') : ''), (pt.precio ? 'S/ '+Number(pt.precio).toLocaleString()+' c/u' : '')].filter(Boolean).join(' · ');
-                  return `<div class="px-4 py-3 flex gap-3 items-center text-sm">
-                    ${pt.foto ? `<img src="${pt.foto}" class="w-12 h-12 rounded-lg object-cover border border-white/10 flex-shrink-0" alt="">` : `<div class="w-12 h-12 rounded-lg bg-white/5 flex-shrink-0 flex items-center justify-center text-[9px] text-white/30">·</div>`}
+                  const titulo = (pt.titulo || pt.categoria || pt.desc || 'Ítem').split('\n')[0];
+                  const descTxt = (pt.desc && pt.desc !== titulo) ? pt.desc : (pt.desc || '');
+                  const tags = [pt.subcategoria, pt.marca].filter(Boolean).join(' · ');
+                  const det = [(pt.cant ? pt.cant + ' ' + (pt.unidad||'und') : ''), (pt.precio ? 'S/ '+Number(pt.precio).toLocaleString()+' c/u' : '')].filter(Boolean).join(' · ');
+                  return `<div class="px-4 py-3.5 flex gap-3 items-start text-sm">
+                    ${pt.foto ? `<img src="${pt.foto}" class="w-14 h-14 rounded-xl object-cover border border-white/10 flex-shrink-0" alt="">` : `<div class="w-14 h-14 rounded-xl bg-white/5 flex-shrink-0 flex items-center justify-center text-[9px] text-white/30 border border-white/5">ÍTEM</div>`}
                     <div class="flex-1 min-w-0">
-                      <span class="text-white/90">${pt.desc || '—'}</span>
-                      ${det ? `<p class="text-[10px] text-white/40 mt-0.5">${det}</p>` : ''}
+                      <p class="text-white font-medium leading-snug">${titulo}</p>
+                      ${descTxt && descTxt !== titulo ? `<p class="text-[12px] text-white/55 mt-1 leading-relaxed">${descTxt}</p>` : ''}
+                      ${tags ? `<p class="text-[10px] text-gold-400/80 mt-1">${tags}</p>` : ''}
+                      ${det ? `<p class="text-[10px] text-white/35 mt-0.5">${det}</p>` : ''}
                     </div>
-                    <span class="text-white font-medium whitespace-nowrap">S/ ${Number(pt.monto||0).toLocaleString()}</span>
+                    <span class="text-white font-semibold whitespace-nowrap pt-0.5">S/ ${Number(pt.monto||0).toLocaleString()}</span>
                   </div>`;
                 }).join('') : `<p class="px-4 py-6 text-center text-white/40 text-sm">Sin partidas</p>`}
                 ${(p.subRental > 0) ? `<div class="px-4 py-3 flex justify-between gap-3 text-sm"><span class="text-white/70">Rental herramientas (${p.diasEjecucion||1} días)</span><span class="text-white font-medium">S/ ${Number(p.subRental).toLocaleString()}</span></div>` : ''}
