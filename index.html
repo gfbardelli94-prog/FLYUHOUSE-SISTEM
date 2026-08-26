@@ -6512,20 +6512,11 @@ inventario: () => {
     function linkPresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
       if (!p) return '';
-      // Siempre URL corta: la data vive en la nube (Supabase)
-      const base = location.origin + location.pathname.replace(/\/$/, '') || location.href.split('?')[0].split('#')[0];
-      const cleanBase = (location.origin + (location.pathname || '/')).replace(/\/index\.html$/i, '/').replace(/\/$/, '') || location.origin;
-      // Prefer production-style root
-      let root = location.origin;
-      if (location.pathname && location.pathname !== '/' && !location.pathname.endsWith('.html')) {
-        // keep path if app is in subfolder
-        root = location.origin + location.pathname.replace(/\/[^/]*$/, '');
-        if (root.endsWith('/')) root = root.slice(0, -1);
-      }
       if (!p.token) {
         p.token = 'fh' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       }
-      return root + '/?pres=' + encodeURIComponent(p.token);
+      // Link corto fijo al dominio de producción / origen actual
+      return location.origin + '/?pres=' + encodeURIComponent(p.token);
     }
     async function copiarLinkPresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
@@ -6659,6 +6650,11 @@ inventario: () => {
     function cerrarVistaClientePres() {
       document.getElementById('vista-cliente-pres')?.classList.add('hidden');
       document.body.style.overflow = '';
+      // Si el cliente entró solo con link de presupuesto, no mostrar el sistema
+      if (window._fhClientPresMode) {
+        document.body.innerHTML = '<div style="min-height:100vh;background:#0a0a0b;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:Inter,system-ui,sans-serif;color:#fff;padding:24px;text-align:center"><p style="color:#D4AF37;letter-spacing:0.3em;font-size:11px;text-transform:uppercase;margin-bottom:16px">FLYHOUSE</p><p style="font-size:18px;font-weight:600;margin-bottom:8px">Gracias</p><p style="color:rgba(255,255,255,0.5);font-size:14px;max-width:320px">Puede cerrar esta ventana. Un asesor se comunicará con usted si corresponde.</p></div>';
+        return;
+      }
     }
     function clienteAccionPres(id, accion) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
@@ -6732,16 +6728,37 @@ inventario: () => {
         }
       }
     }
-    // Abrir presupuesto por URL corta ?pres=token (data desde la nube)
+    // Modo CLIENTE: solo presupuesto, sin login ni sistema
+    window._fhClientPresMode = false;
     (function initPresFromUrl() {
       try {
         const q = new URLSearchParams(location.search).get('pres');
         if (!q) return;
+        window._fhClientPresMode = true;
+        window._fhPresToken = q;
+
+        // Ocultar login y panel interno de inmediato
+        try {
+          const login = document.getElementById('login-screen');
+          const shell = document.getElementById('app-shell');
+          if (login) { login.classList.add('hidden'); login.style.display = 'none'; }
+          if (shell) { shell.classList.add('hidden'); shell.style.display = 'none'; }
+          document.body.style.overflow = 'hidden';
+        } catch (e) {}
+
+        // Pantalla de carga simple
+        let loading = document.getElementById('pres-client-loading');
+        if (!loading) {
+          loading = document.createElement('div');
+          loading.id = 'pres-client-loading';
+          loading.style.cssText = 'position:fixed;inset:0;z-index:200;background:#0a0a0b;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#D4AF37;font-family:Inter,system-ui,sans-serif;';
+          loading.innerHTML = '<p style="letter-spacing:0.25em;font-size:11px;text-transform:uppercase;margin-bottom:12px">FLYHOUSE</p><p style="color:rgba(255,255,255,0.6);font-size:14px">Cargando su propuesta…</p>';
+          document.body.appendChild(loading);
+        }
 
         async function resolvePresupuesto() {
           let p = (data.presupuestos || []).find(x => String(x.token) === q || String(x.id) === q);
           if (p) return p;
-          // Cargar desde nube
           try {
             if (!supabaseClient) initSupabase();
             const row = await cloudPull();
@@ -6751,42 +6768,40 @@ inventario: () => {
               p = (data.presupuestos || []).find(x => String(x.token) === q || String(x.id) === q);
             }
           } catch (e) { console.error('pres cloud', e); }
-          // Fallback: payload largo en hash (links antiguos)
-          if (!p) {
-            const hash = (location.hash || '').replace(/^#/, '');
-            let dParam = null;
-            if (hash.startsWith('d=')) dParam = hash.slice(2);
-            if (dParam && typeof decodePresShare === 'function') {
-              const shared = decodePresShare(dParam);
-              if (shared) p = mergePresFromShare(shared);
-            }
-          }
           return p;
         }
 
         const openWhenReady = async () => {
-          // esperar un poco a syncCloudOnBoot si existe
           try {
-            if (window._fhCloudSync) await Promise.race([window._fhCloudSync, new Promise(r => setTimeout(r, 4000))]);
+            if (window._fhCloudSync) await Promise.race([window._fhCloudSync, new Promise(r => setTimeout(r, 5000))]);
           } catch (e) {}
           let p = await resolvePresupuesto();
           if (!p) {
-            // reintento
-            await new Promise(r => setTimeout(r, 800));
+            await new Promise(r => setTimeout(r, 1000));
             p = await resolvePresupuesto();
           }
+          const loadEl = document.getElementById('pres-client-loading');
           if (p) {
             if (p.estado === 'Borrador' || p.estado === 'Enviado') {
               p.estado = 'Visto';
-              try { saveSystemData(); } catch (e) {}
+              try { if (typeof scheduleCloudPush === 'function') scheduleCloudPush(); } catch (e) {}
             }
+            if (loadEl) loadEl.remove();
             renderVistaClientePres(p);
+            // Asegurar que login/shell sigan ocultos
+            try {
+              document.getElementById('login-screen')?.classList.add('hidden');
+              document.getElementById('app-shell')?.classList.add('hidden');
+              const v = document.getElementById('vista-cliente-pres');
+              if (v) { v.classList.remove('hidden'); v.style.zIndex = '300'; }
+            } catch (e) {}
           } else {
-            console.warn('Presupuesto no encontrado:', q);
-            try { alert('No se encontró este presupuesto. Puede haber sido eliminado o aún no sincronizado.'); } catch (e) {}
+            if (loadEl) {
+              loadEl.innerHTML = '<p style="color:#fff;font-size:15px;margin-bottom:8px">Propuesta no disponible</p><p style="color:rgba(255,255,255,0.5);font-size:13px;max-width:280px;text-align:center">El enlace puede haber expirado o el presupuesto aún no está sincronizado. Contacte a FLYHOUSE.</p>';
+            }
           }
         };
-        setTimeout(openWhenReady, 300);
+        setTimeout(openWhenReady, 200);
       } catch (e) { console.error(e); }
     })();
 
@@ -12357,21 +12372,28 @@ inventario: () => {
     // Restaurar timer del día (en pausa → Continuar)
     restoreTimerState();
 
-    // Sesión: si ya logueado, entrar directo; si no, login
-    const savedUid = sessionStorage.getItem('fh_user_id');
-    if (savedUid) currentUser = (data.usuarios || []).find(u => String(u.id) === savedUid) || null;
-    if (sessionStorage.getItem('fh_logged') === '1') {
-      document.getElementById('login-screen').classList.add('hidden');
-      document.getElementById('app-shell').classList.remove('hidden');
-      updateSidebarUser();
-      navigate('dashboard');
-      try { actualizarBadgesSidebar(); } catch(e) {}
-      if (dataLoaded) setTimeout(() => mostrarToast('Data restaurada de este navegador'), 800);
+    // Sesión: modo cliente presupuesto → no login ni sistema
+    if (window._fhClientPresMode || new URLSearchParams(location.search).get('pres')) {
+      try {
+        document.getElementById('login-screen')?.classList.add('hidden');
+        document.getElementById('app-shell')?.classList.add('hidden');
+      } catch (e) {}
     } else {
-      document.getElementById('login-screen').classList.remove('hidden');
-      document.getElementById('app-shell').classList.add('hidden');
-      renderLoginUsers();
-      lucide.createIcons();
+      const savedUid = sessionStorage.getItem('fh_user_id');
+      if (savedUid) currentUser = (data.usuarios || []).find(u => String(u.id) === savedUid) || null;
+      if (sessionStorage.getItem('fh_logged') === '1') {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-shell').classList.remove('hidden');
+        updateSidebarUser();
+        navigate('dashboard');
+        try { actualizarBadgesSidebar(); } catch(e) {}
+        if (dataLoaded) setTimeout(() => mostrarToast('Data restaurada de este navegador'), 800);
+      } else {
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('app-shell').classList.add('hidden');
+        renderLoginUsers();
+        lucide.createIcons();
+      }
     }
   </script>
 
