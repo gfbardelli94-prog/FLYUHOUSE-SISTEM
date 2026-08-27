@@ -2,7 +2,9 @@
   "version": 2,
   "name": "flyhouse",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/s/:token", "destination": "/api/share?pres=:token" },
+    { "source": "/og/:token", "destination": "/api/og?pres=:token" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

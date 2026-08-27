@@ -6549,14 +6549,17 @@ inventario: () => {
         return JSON.parse(json);
       } catch (e) { return null; }
     }
+    function dominioPublicoFlyhouse() {
+      return 'https://flyuhouse-sistem.vercel.app';
+    }
     function linkPresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
       if (!p) return '';
       if (!p.token) {
         p.token = 'fh' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       }
-      // Link corto fijo al dominio de producción / origen actual
-      return location.origin + '/?pres=' + encodeURIComponent(p.token);
+      // URL corta de compartir (OG + miniatura). Siempre dominio de producción.
+      return dominioPublicoFlyhouse() + '/s/' + encodeURIComponent(p.token);
     }
     async function copiarLinkPresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
@@ -6582,9 +6585,8 @@ inventario: () => {
         'FLYHOUSE · ' + (p.titulo || 'Propuesta'),
         p.cliente ? ('Para: ' + p.cliente) : '',
         p.lugar ? ('Lugar: ' + p.lugar) : '',
-        'Total: S/ ' + Number(p.total || 0).toLocaleString(),
         '',
-        'Mira cómo quedaría tu espacio y acepta aquí:',
+        'Mira cómo quedaría tu espacio 👇',
         url
       ].filter(x => x !== '').join('\n');
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -6841,12 +6843,11 @@ inventario: () => {
       items.forEach(p => { if (p.estado === 'Borrador') p.estado = 'Enviado'; });
       saveSystemData();
       try { if (!supabaseClient) initSupabase(); if (typeof cloudPush === 'function') await cloudPush(); } catch(e) {}
-      const url = location.origin + '/?pack=' + encodeURIComponent(pack.token);
+      const url = (typeof dominioPublicoFlyhouse==='function'?dominioPublicoFlyhouse():location.origin) + '/s/' + encodeURIComponent(pack.token);
       const msg = [
         'FLYHOUSE · Pack de propuestas',
         pack.cliente ? ('Para: ' + pack.cliente) : '',
-        items.length + ' proyectos · si tomas todos:',
-        'De S/ ' + bruto.toLocaleString() + ' a S/ ' + total.toLocaleString(),
+        items.length + ' proyectos juntos',
         pack.nota || '',
         '',
         'Revísalo aquí:',
