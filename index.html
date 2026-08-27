@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FLYHOUSE Property OS</title>
+  <title>FLYHOUSE · Propuesta</title>
+  <meta name="description" content="Revisa tu propuesta FLYHOUSE: cómo quedaría tu espacio, partidas y total. Acepta o consulta en un toque." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="FLYHOUSE" />
+  <meta property="og:title" content="FLYHOUSE · Propuesta para tu espacio" />
+  <meta property="og:description" content="Mira cómo quedaría tu proyecto, el desglose y el total. Acepta o habla con un asesor." />
+  <meta property="og:url" content="https://flyuhouse-sistem.vercel.app/" />
+  <meta name="twitter:card" content="summary_large_image" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1986,6 +1993,7 @@
       if (!Array.isArray(data.clientes)) data.clientes = [];
       if (!Array.isArray(data.clientesEliminados)) data.clientesEliminados = [];
       if (!Array.isArray(data.presupuestos)) data.presupuestos = [];
+      if (!Array.isArray(data.packs)) data.packs = [];
       if (!data.nextPresupuestoId) data.nextPresupuestoId = 1;
       if (!data.vistosAlertas || typeof data.vistosAlertas !== 'object') data.vistosAlertas = {};
       if (!Array.isArray(data.usuarios)) data.usuarios = [];
@@ -2244,6 +2252,7 @@
           if (!Array.isArray(data.clientes)) data.clientes = [];
           if (!Array.isArray(data.clientesEliminados)) data.clientesEliminados = [];
           if (!Array.isArray(data.presupuestos)) data.presupuestos = [];
+      if (!Array.isArray(data.packs)) data.packs = [];
           if (!data.nextPresupuestoId) data.nextPresupuestoId = 1;
           if (!data.vistosAlertas || typeof data.vistosAlertas !== 'object') data.vistosAlertas = {};
           if (!Array.isArray(data.usuarios)) data.usuarios = [];
@@ -2457,6 +2466,7 @@
         <span class="text-sm font-semibold text-ink-800">${n} seleccionado${n>1?'s':''}</span>
         <button onclick="accionMasiva('${tipo}','eliminar')" class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100">Eliminar</button>
         <button onclick="accionMasiva('${tipo}','ocultar')" class="px-3 py-1.5 text-xs font-semibold text-ink-700 bg-white border border-gold-200 rounded-lg hover:bg-gold-50">Ocultar</button>
+        ${tipo==='presupuestos' ? `<button onclick="abrirModalPackPres()" class="px-3 py-1.5 text-xs font-semibold text-ink-900 btn-gold rounded-lg">Pack + promoción</button>` : ''}
         <button onclick="limpiarSeleccion('${tipo}')" class="px-3 py-1.5 text-xs text-ink-500 hover:text-ink-700">Limpiar selección</button>
       </div>`;
     }
@@ -3795,7 +3805,7 @@
             </label>
           </div>
           ${barraSeleccion('presupuestos')}
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
             ${lista.length ? lista.map(p => {
               const sel = seleccion.presupuestos.has(String(p.id));
               const stCls = p.estado==='Aceptado'?'bg-emerald-500 text-white':p.estado==='Enviado'||p.estado==='Visto'?'bg-blue-500 text-white':p.estado==='Consultado'?'bg-amber-500 text-white':'bg-ink-700 text-white';
@@ -3808,46 +3818,31 @@
               const nTools = (p.toolsList||[]).length;
               const borderAcc = p.estado==='Aceptado' ? 'ring-2 ring-emerald-400 border-emerald-200' : p.estado==='Consultado' ? 'ring-2 ring-amber-300 border-amber-200' : 'border-gold-100';
               return `
-              <div class="card-premium rounded-2xl overflow-hidden border ${borderAcc} ${sel?'ring-2 ring-gold-400':''} hover:shadow-lg transition-all">
-                <div class="relative h-40 bg-ink-900">
+              <div class="card-premium rounded-2xl overflow-hidden border ${borderAcc} ${sel?'ring-2 ring-gold-400':''} hover:shadow-lg transition-all flex flex-col">
+                <div class="relative aspect-[3/4] bg-ink-900">
                   ${p.fotoDespues || p.fotoAntes
                     ? `<img src="${p.fotoDespues || p.fotoAntes}" class="w-full h-full object-cover" alt="">`
-                    : `<div class="w-full h-full flex items-center justify-center text-gold-400 text-xs tracking-widest uppercase">FLYHOUSE · Presupuesto</div>`}
-                  <div class="absolute top-3 left-3 flex items-center gap-2">
+                    : `<div class="w-full h-full flex items-center justify-center text-gold-400 text-[10px] tracking-widest uppercase px-3 text-center">FLYHOUSE</div>`}
+                  <div class="absolute top-2 left-2 flex items-center gap-1.5">
                     <input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('presupuestos','${String(p.id).replace(/'/g,"\\'")}',event)" class="accent-amber-600 w-4 h-4" onclick="event.stopPropagation()">
-                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow ${stCls}">${p.estado||'Borrador'}</span>
-                    ${p.reqId ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-600 text-white shadow">→ ${p.reqId}</span>` : ''}
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold shadow ${stCls}">${p.estado||'Borrador'}</span>
                   </div>
-                  <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                    <p class="text-white font-bold text-sm leading-tight">${p.titulo||'Sin título'}</p>
-                    <p class="text-white/70 text-[11px] mt-0.5">${p.cliente||'Cliente'}${p.lugar ? ' · ' + p.lugar : ''}</p>
+                  <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-2.5">
+                    <p class="text-white font-bold text-xs leading-tight line-clamp-2">${p.titulo||'Sin título'}</p>
+                    <p class="text-white/70 text-[10px] mt-0.5 truncate">${p.cliente||'Cliente'}${p.lugar ? ' · ' + p.lugar : ''}</p>
                   </div>
                 </div>
-                ${thumbs.length ? `<div class="flex gap-1.5 overflow-x-auto px-3 pt-3 pb-1">
-                  ${thumbs.slice(0,8).map(t => `<div class="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-gold-100 shadow-sm" title="${(t.label||'').replace(/"/g,'')}">
-                    <img src="${t.src}" class="w-full h-full object-cover" alt="">
-                  </div>`).join('')}
-                  ${thumbs.length > 8 ? `<div class="flex-shrink-0 w-12 h-12 rounded-lg bg-ink-100 text-ink-500 text-[10px] font-bold flex items-center justify-center">+${thumbs.length-8}</div>` : ''}
-                </div>` : ''}
-                <div class="p-4 space-y-3">
-                  <div class="flex justify-between items-end gap-2">
-                    <div>
-                      <p class="text-[10px] text-ink-400 uppercase font-semibold">Total cliente</p>
-                      <div class="flex items-baseline gap-2">
-                        ${(p.totalOriginal && p.totalOriginal > p.total) ? `<span class="text-xs text-ink-400 line-through">S/ ${Number(p.totalOriginal).toLocaleString()}</span>` : ''}
-                        <p class="text-xl font-bold text-gold-700">S/ ${Number(p.total||0).toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <div class="text-right text-[10px] text-ink-400 space-y-0.5">
-                      <p>${p.fecha||''}</p>
-                      <p>${nPart} partida${nPart!==1?'s':''}${nTools ? ' · ' + nTools + ' tool'+(nTools!==1?'s':'') : ''}${p.diasEjecucion ? ' · ' + p.diasEjecucion + 'd' : ''}</p>
-                    </div>
+                <div class="p-3 space-y-2 flex-1 flex flex-col">
+                  <div>
+                    ${(p.totalOriginal && p.totalOriginal > p.total) ? `<p class="text-[10px] text-ink-400 line-through">S/ ${Number(p.totalOriginal).toLocaleString()}</p>` : ''}
+                    <p class="text-lg font-bold text-gold-700 leading-none">S/ ${Number(p.total||0).toLocaleString()}</p>
+                    <p class="text-[10px] text-ink-400 mt-1">${nPart} partida${nPart!==1?'s':''}${p.diasEjecucion ? ' · '+p.diasEjecucion+'d' : ''}</p>
                   </div>
-                  <div class="flex flex-wrap gap-2">
-                    <button type="button" onclick="abrirModalPresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="px-3 py-1.5 text-xs border border-gold-200 rounded-lg hover:bg-gold-50">Editar</button>
-                    <button type="button" onclick="copiarLinkPresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="px-3 py-1.5 text-xs btn-gold rounded-lg">Copiar link</button>
-                    <button type="button" onclick="abrirVistaClientePresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="px-3 py-1.5 text-xs border border-ink-200 rounded-lg">Vista cliente</button>
-                    <button type="button" onclick="eliminarPresupuestoUI('${String(p.id).replace(/'/g,"\\'")}')" class="px-3 py-1.5 text-xs text-red-600 border border-red-200 rounded-lg">Eliminar</button>
+                  <div class="mt-auto grid grid-cols-2 gap-1.5">
+                    <button type="button" onclick="abrirModalPresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="px-2 py-1.5 text-[10px] border border-gold-200 rounded-lg hover:bg-gold-50">Editar</button>
+                    <button type="button" onclick="copiarLinkPresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="px-2 py-1.5 text-[10px] btn-gold rounded-lg">Link</button>
+                    <button type="button" onclick="abrirVistaClientePresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="px-2 py-1.5 text-[10px] border border-ink-200 rounded-lg">Vista</button>
+                    <button type="button" onclick="cambiarEstadoPresupuestoUI('${String(p.id).replace(/'/g,"\\'")}')" class="px-2 py-1.5 text-[10px] border border-gold-300 rounded-lg text-gold-800">Estado</button>
                   </div>
                 </div>
               </div>`;
@@ -6580,10 +6575,19 @@ inventario: () => {
         }
       } catch (e) { console.error(e); }
       const url = linkPresupuesto(id);
+      const msg = [
+        'FLYHOUSE · ' + (p.titulo || 'Propuesta'),
+        p.cliente ? ('Para: ' + p.cliente) : '',
+        p.lugar ? ('Lugar: ' + p.lugar) : '',
+        'Total: S/ ' + Number(p.total || 0).toLocaleString(),
+        '',
+        'Mira cómo quedaría tu espacio y acepta aquí:',
+        url
+      ].filter(x => x !== '').join('\n');
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(() => mostrarToast('Link corto copiado ✓')).catch(() => prompt('Copia este link:', url));
+        navigator.clipboard.writeText(msg).then(() => mostrarToast('Mensaje + link corto copiado ✓')).catch(() => prompt('Copia este link:', url));
       } else {
-        prompt('Copia este link:', url);
+        prompt('Copia este mensaje:', msg);
       }
       navigate('presupuestos');
     }
@@ -6704,6 +6708,164 @@ inventario: () => {
         return;
       }
     }
+    function cambiarEstadoPresupuestoUI(id) {
+      const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
+      if (!p) return;
+      const next = prompt('Nuevo estado (Borrador / Enviado / Visto / Consultado / Aceptado / Rechazado):', p.estado || 'Borrador');
+      if (!next) return;
+      const ok = ['Borrador','Enviado','Visto','Consultado','Aceptado','Rechazado'].find(s => s.toLowerCase() === next.trim().toLowerCase());
+      if (!ok) { mostrarToast('Estado no válido'); return; }
+      pedirPin('Cambiar estado', 'PIN master para editar el estado del presupuesto', () => {
+        p.estado = ok;
+        if (ok === 'Borrador' || ok === 'Enviado') {
+          p.respuestaCliente = '';
+        }
+        saveSystemData();
+        navigate('presupuestos');
+        mostrarToast('Estado actualizado: ' + ok);
+      });
+    }
+    function abrirModalPackPres() {
+      const ids = [...(seleccion.presupuestos || [])];
+      if (ids.length < 2) { mostrarToast('Selecciona al menos 2 presupuestos'); return; }
+      const items = (data.presupuestos || []).filter(p => ids.includes(String(p.id)));
+      const bruto = items.reduce((s,p) => s + (Number(p.total)||0), 0);
+      const cliente = items[0].cliente || '';
+      const wrap = document.createElement('div');
+      wrap.id = 'modal-pack-pres';
+      wrap.className = 'fixed inset-0 z-[96]';
+      wrap.innerHTML = `
+        <div class="absolute inset-0 bg-ink-900/60" onclick="document.getElementById('modal-pack-pres')?.remove()"></div>
+        <div class="absolute inset-0 flex items-start justify-center overflow-y-auto p-4">
+          <div class="relative bg-white rounded-2xl shadow-premium w-full max-w-md my-8 border border-gold-200 p-6 space-y-3">
+            <h3 class="text-lg font-bold text-ink-800">Pack de presupuestos</h3>
+            <p class="text-xs text-ink-500">${items.length} propuestas · cliente: ${cliente || 'varios'}</p>
+            <ul class="text-sm space-y-1 max-h-40 overflow-y-auto">${items.map(p => `<li class="flex justify-between gap-2"><span class="truncate">${p.titulo||p.id}</span><span class="font-medium">S/ ${Number(p.total||0).toLocaleString()}</span></li>`).join('')}</ul>
+            <p class="text-sm">Subtotal: <b>S/ ${bruto.toLocaleString()}</b></p>
+            <label class="form-label">Promoción si toma todo el pack</label>
+            <div class="grid grid-cols-2 gap-2">
+              <select id="pack-desc-tipo" class="px-3 py-2 text-sm border border-gold-200 rounded-xl">
+                <option value="porcentaje">Porcentaje %</option>
+                <option value="monto">Monto S/</option>
+              </select>
+              <input id="pack-desc-val" type="number" min="0" value="10" class="px-3 py-2 text-sm border border-gold-200 rounded-xl">
+            </div>
+            <textarea id="pack-nota" rows="2" class="w-full px-3 py-2 text-sm border border-gold-200 rounded-xl" placeholder="Ej: Si aceptas las 3 propuestas, aplicamos 10% off."></textarea>
+            <div class="flex gap-2 pt-1">
+              <button type="button" onclick="document.getElementById('modal-pack-pres')?.remove()" class="flex-1 border border-gold-200 py-2.5 rounded-xl text-sm">Cancelar</button>
+              <button type="button" onclick="guardarPackPres()" class="flex-1 btn-gold py-2.5 rounded-xl text-sm font-semibold">Crear y copiar link</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.appendChild(wrap);
+    }
+    async function guardarPackPres() {
+      const ids = [...(seleccion.presupuestos || [])];
+      const items = (data.presupuestos || []).filter(p => ids.includes(String(p.id)));
+      if (items.length < 2) return;
+      if (!data.packs) data.packs = [];
+      const tipo = document.getElementById('pack-desc-tipo')?.value || 'porcentaje';
+      const val = parseFloat(document.getElementById('pack-desc-val')?.value) || 0;
+      const nota = document.getElementById('pack-nota')?.value || '';
+      const bruto = items.reduce((s,p) => s + (Number(p.total)||0), 0);
+      let descMonto = tipo === 'monto' ? val : bruto * (val / 100);
+      const total = Math.max(0, bruto - descMonto);
+      const pack = {
+        id: 'PACK-' + Date.now().toString(36),
+        token: 'pk' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+        titulo: 'Pack ' + (items[0].cliente || 'FLYHOUSE'),
+        cliente: items[0].cliente || '',
+        ids: items.map(p => p.id),
+        descTipo: tipo,
+        descValor: val,
+        descMonto,
+        totalOriginal: bruto,
+        total,
+        nota,
+        estado: 'Enviado',
+        fecha: new Date().toISOString().slice(0,10)
+      };
+      data.packs.unshift(pack);
+      items.forEach(p => { if (p.estado === 'Borrador') p.estado = 'Enviado'; });
+      saveSystemData();
+      try { if (!supabaseClient) initSupabase(); if (typeof cloudPush === 'function') await cloudPush(); } catch(e) {}
+      const url = location.origin + '/?pack=' + encodeURIComponent(pack.token);
+      const msg = [
+        'FLYHOUSE · Pack de propuestas',
+        pack.cliente ? ('Para: ' + pack.cliente) : '',
+        items.length + ' proyectos · si tomas todos:',
+        'De S/ ' + bruto.toLocaleString() + ' a S/ ' + total.toLocaleString(),
+        pack.nota || '',
+        '',
+        'Revísalo aquí:',
+        url
+      ].filter(Boolean).join('\\n');
+      document.getElementById('modal-pack-pres')?.remove();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(msg).then(() => mostrarToast('Link del pack copiado ✓')).catch(() => prompt('Copia:', url));
+      } else prompt('Copia:', msg);
+      limpiarSeleccion('presupuestos');
+    }
+    function renderVistaClientePack(pack) {
+      const items = (data.presupuestos || []).filter(p => (pack.ids || []).map(String).includes(String(p.id)));
+      const body = document.getElementById('vista-cliente-pres-body');
+      const root = document.getElementById('vista-cliente-pres');
+      if (!body || !root) return;
+      body.innerHTML = `
+        <div class="min-h-screen bg-[#0a0a0b] text-white">
+          <div class="max-w-3xl mx-auto px-4 py-10">
+            <p class="text-[10px] tracking-[0.3em] text-gold-400 uppercase font-semibold mb-2">FLYHOUSE · Pack</p>
+            <h1 class="text-2xl font-bold mb-1">${pack.titulo || 'Propuestas juntas'}</h1>
+            <p class="text-white/50 text-sm mb-6">${pack.cliente || ''} · ${items.length} proyectos</p>
+            ${pack.nota ? `<p class="text-gold-300 text-sm mb-8 border-l-2 border-gold-500 pl-4">${pack.nota}</p>` : ''}
+            <div class="space-y-4 mb-8">
+              ${items.map(p => `
+                <div class="rounded-2xl overflow-hidden border border-white/10 bg-white/5 flex gap-3">
+                  <div class="w-28 sm:w-36 aspect-[3/4] bg-ink-800 flex-shrink-0">
+                    ${p.fotoDespues || p.fotoAntes ? `<img src="${p.fotoDespues || p.fotoAntes}" class="w-full h-full object-cover" alt="">` : ''}
+                  </div>
+                  <div class="p-3 flex-1">
+                    <p class="font-semibold">${p.titulo || ''}</p>
+                    <p class="text-xs text-white/40 mt-1">${p.lugar || ''}</p>
+                    <p class="text-gold-400 font-bold mt-2">S/ ${Number(p.total||0).toLocaleString()}</p>
+                  </div>
+                </div>`).join('')}
+            </div>
+            <div class="rounded-2xl border border-gold-500/40 p-4 mb-8">
+              ${(pack.totalOriginal > pack.total) ? `<p class="text-white/40 text-sm line-through">S/ ${Number(pack.totalOriginal).toLocaleString()}</p>` : ''}
+              <p class="text-2xl font-bold text-gold-400">S/ ${Number(pack.total||0).toLocaleString()}</p>
+              <p class="text-xs text-white/50 mt-1">Si aceptas el pack completo</p>
+            </div>
+            <div class="flex flex-col gap-2">
+              <button type="button" onclick="clienteAccionPack('${pack.id}','aceptar')" class="py-3.5 rounded-xl font-semibold text-sm text-ink-900 oferta-pulse" style="background:linear-gradient(135deg,#D4AF37,#C9A227)">Aceptar pack completo</button>
+              <button type="button" onclick="clienteAccionPack('${pack.id}','asesor')" class="py-3.5 rounded-xl font-semibold text-sm border border-gold-500/40 text-gold-400">Hablar con un asesor</button>
+            </div>
+          </div>
+        </div>`;
+      root.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      try { document.getElementById('login-screen')?.classList.add('hidden'); document.getElementById('app-shell')?.classList.add('hidden'); } catch(e) {}
+    }
+    function clienteAccionPack(id, accion) {
+      const pack = (data.packs || []).find(x => String(x.id) === String(id));
+      if (!pack) return;
+      if (accion === 'aceptar') {
+        pack.estado = 'Aceptado';
+        (pack.ids || []).forEach(pid => {
+          const p = (data.presupuestos || []).find(x => String(x.id) === String(pid));
+          if (p && p.estado !== 'Aceptado') clienteAccionPres(p.id, 'aceptar');
+        });
+        saveSystemData();
+        alert('Pack aceptado. Un asesor FLYHOUSE te contactará.');
+        cerrarVistaClientePres();
+      } else {
+        pack.estado = 'Consultado';
+        saveSystemData();
+        alert('Un asesor se comunicará contigo.');
+        cerrarVistaClientePres();
+      }
+    }
+
     function clienteAccionPres(id, accion) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
       if (!p) return;
@@ -6781,9 +6943,11 @@ inventario: () => {
     (function initPresFromUrl() {
       try {
         const q = new URLSearchParams(location.search).get('pres');
-        if (!q) return;
+        const packTok = new URLSearchParams(location.search).get('pack');
+        if (!q && !packTok) return;
         window._fhClientPresMode = true;
         window._fhPresToken = q;
+        window._fhPackToken = packTok;
 
         // Ocultar login y panel interno de inmediato
         try {
@@ -6823,8 +6987,25 @@ inventario: () => {
           try {
             if (window._fhCloudSync) await Promise.race([window._fhCloudSync, new Promise(r => setTimeout(r, 5000))]);
           } catch (e) {}
-          let p = await resolvePresupuesto();
-          if (!p) {
+          if (packTok) {
+            let pack = (data.packs || []).find(x => String(x.token) === packTok || String(x.id) === packTok);
+            if (!pack) {
+              try {
+                if (!supabaseClient) initSupabase();
+                const row = await cloudPull();
+                if (row && row.payload && row.payload.data) applyPersistPayload(row.payload);
+                pack = (data.packs || []).find(x => String(x.token) === packTok || String(x.id) === packTok);
+              } catch (e) {}
+            }
+            const loadElP = document.getElementById('pres-client-loading');
+            if (pack) {
+              if (loadElP) loadElP.remove();
+              renderVistaClientePack(pack);
+              return;
+            }
+          }
+          let p = q ? await resolvePresupuesto() : null;
+          if (q && !p) {
             await new Promise(r => setTimeout(r, 1000));
             p = await resolvePresupuesto();
           }
