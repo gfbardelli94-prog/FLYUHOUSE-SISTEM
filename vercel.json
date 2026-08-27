@@ -4,6 +4,7 @@
   "rewrites": [
     { "source": "/s/:token", "destination": "/api/share?pres=:token" },
     { "source": "/og/:token", "destination": "/api/og?pres=:token" },
+    { "source": "/r", "destination": "/api/rental" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [

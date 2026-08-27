@@ -4891,7 +4891,10 @@
               <h2 class="text-lg font-bold text-ink-800">Pedidos Rental</h2>
               <p class="text-xs text-ink-500">${lista.length} pedidos · ${pend} pendientes de preparar</p>
             </div>
-            <button type="button" onclick="abrirVistaRental()" class="px-4 py-2 text-sm border border-gold-200 rounded-xl hover:bg-gold-50 font-medium">Vista cliente Rental</button>
+            <div class="flex gap-2">
+              <button type="button" onclick="compartirLinkRental()" class="px-4 py-2.5 text-sm btn-gold rounded-xl font-semibold">Compartir rental</button>
+              <button type="button" onclick="abrirVistaRental()" class="px-4 py-2.5 text-sm border border-gold-200 rounded-xl hover:bg-gold-50 font-medium">Vista cliente</button>
+            </div>
           </div>
           <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div class="card-premium rounded-xl p-4"><p class="text-[10px] uppercase text-ink-500 font-semibold">Total pedidos</p><p class="text-2xl font-bold mt-1">${lista.length}</p></div>
@@ -4922,9 +4925,9 @@
                     </div>`).join('')}
                 </div>
                 <div class="flex flex-wrap gap-2 mt-3">
-                  <button type="button" onclick="setEstadoPedidoRental('${p.id}','En preparación')" class="text-xs px-3 py-1.5 border border-gold-200 rounded-lg hover:bg-gold-50">En preparación</button>
-                  <button type="button" onclick="setEstadoPedidoRental('${p.id}','Entregado')" class="text-xs px-3 py-1.5 border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-50">Marcar entregado</button>
-                  <button type="button" onclick="navigate('requerimientos')" class="text-xs px-3 py-1.5 text-gold-700 font-semibold">Ver requerimientos →</button>
+                  <button type="button" onclick="setEstadoPedidoRental('${p.id}','En preparación')" class="text-sm font-semibold px-3 py-2 border border-gold-200 rounded-xl hover:bg-gold-50">En preparación</button>
+                  <button type="button" onclick="notificarAlmacenesRental('${p.id}')" class="text-sm font-semibold px-3 py-2 btn-gold rounded-xl">Mandar a almacenes</button>
+                  <button type="button" onclick="setEstadoPedidoRental('${p.id}','Entregado')" class="text-sm font-semibold px-3 py-2 border border-emerald-200 text-emerald-700 rounded-xl hover:bg-emerald-50">Entregado</button>
                 </div>
               </div>`).join('') : '<p class="text-center text-ink-400 py-12 text-sm">Aún no hay pedidos de rental. Llegan cuando el cliente confirma en la vista pública.</p>'}
           </div>
@@ -5038,8 +5041,9 @@ inventario: () => {
               <p class="text-xs text-ink-500">${verTodo ? 'Master · todos los almacenes y rental' : 'Tu almacén personal'}</p>
             </div>
             <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="compartirLinkRental()" class="px-4 py-2.5 text-sm rounded-xl font-semibold btn-gold">Compartir rental</button>
               <button type="button" onclick="abrirVistaRental()" class="px-4 py-2.5 text-sm rounded-xl flex items-center gap-2 font-semibold border border-gold-300 bg-white text-ink-800 hover:bg-gold-50">
-                <i data-lucide="eye" class="w-4 h-4 text-gold-600"></i> Vista Rental (cliente)
+                <i data-lucide="eye" class="w-4 h-4 text-gold-600"></i> Vista Rental
               </button>
               <button onclick="abrirModalInventario()" class="btn-gold px-4 py-2.5 text-sm rounded-xl flex items-center gap-2 font-semibold">
                 <i data-lucide="plus" class="w-4 h-4"></i> Agregar herramienta
@@ -5681,7 +5685,7 @@ inventario: () => {
               if (!puedeVerTodo() && typeof itemEsDelUsuario === 'function' && !itemEsDelUsuario(it)) return;
             } catch (e) {}
             const id = it.id || (r.id + '-' + (it.area || 'x'));
-            if (!_fueVisto('requerimientos', id)) ids.push(id);
+            ids.push(id);
           });
         });
         return ids;
@@ -5697,7 +5701,7 @@ inventario: () => {
       'pedidos-rental'() {
         const cu = (typeof usuarioContexto === 'function' ? usuarioContexto() : null) || currentUser;
         return (data.pedidosRental || []).filter(p => {
-          if (p.oculto || _fueVisto('pedidosRental', p.id)) return false;
+          if (p.oculto) return false;
           if (p.estado !== 'Pendiente' && p.estado !== 'En preparación') return false;
           if (puedeVerTodo()) return true;
           return (p.items || []).some(it =>
@@ -5741,8 +5745,8 @@ inventario: () => {
       presupuestos() {
         if (!puedeVerTodo()) return [];
         return (data.presupuestos || []).filter(p =>
-          !p.oculto && !_fueVisto('presupuestos', p.id) &&
-          (p.estado === 'Enviado' || p.estado === 'Visto' || p.estado === 'Borrador')
+          !p.oculto &&
+          ['Borrador','Enviado','Visto','Consultado'].includes(p.estado || 'Borrador')
         ).map(p => p.id);
       }
     };
@@ -6995,8 +6999,19 @@ inventario: () => {
     window._fhClientPresMode = false;
     (function initPresFromUrl() {
       try {
-        const q = new URLSearchParams(location.search).get('pres');
-        const packTok = new URLSearchParams(location.search).get('pack');
+        const params = new URLSearchParams(location.search);
+        const q = params.get('pres');
+        const packTok = params.get('pack');
+        const rentalMode = params.get('rental') === '1' || location.pathname === '/r' || location.pathname.endsWith('/r');
+        if (rentalMode && !q && !packTok) {
+          window._fhClientPresMode = true;
+          try {
+            document.getElementById('login-screen')?.classList.add('hidden');
+            document.getElementById('app-shell')?.classList.add('hidden');
+          } catch (e) {}
+          setTimeout(() => { try { abrirVistaRental(); } catch (e) {} }, 300);
+          return;
+        }
         if (!q && !packTok) return;
         window._fhClientPresMode = true;
         window._fhPresToken = q;
@@ -10796,11 +10811,8 @@ inventario: () => {
       lucide.createIcons();
     }
     function addRentalCart(id) {
-      if (typeof requireStoreCliente === 'function' && !storeCliente) {
-        requireStoreCliente();
-        mostrarToast('Regístrate o inicia sesión para reservar equipos');
-        return;
-      }
+      // Se puede armar la reserva sin cuenta; la cuenta se pide al confirmar
+
       const i = (data.inventario || []).find(x => String(x.id) === String(id));
       if (!i) return;
       const qtyEl = document.getElementById('rental-qty-' + id);
@@ -10878,6 +10890,80 @@ inventario: () => {
       }).join('');
       document.getElementById('rental-cart-total').textContent = 'S/ ' + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
     }
+    function abrirModalGuestRental() {
+      document.getElementById('modal-guest-rental')?.remove();
+      const el = document.createElement('div');
+      el.id = 'modal-guest-rental';
+      el.className = 'fixed inset-0 z-[98]';
+      el.innerHTML = `
+        <div class="absolute inset-0 bg-ink-900/55" onclick="this.parentElement.remove()"></div>
+        <div class="absolute inset-0 flex items-end sm:items-center justify-center p-4">
+          <div class="relative bg-white rounded-2xl w-full max-w-sm p-5 border border-gold-200 space-y-3">
+            <h3 class="font-bold text-ink-800">Datos para la reserva</h3>
+            <p class="text-xs text-ink-500">Así el equipo FLYHOUSE te contacta y avisa a los almacenes.</p>
+            <input id="rental-guest-nombre" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="Nombre completo">
+            <input id="rental-guest-tel" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="WhatsApp / teléfono">
+            <button type="button" onclick="solicitarReservaRental()" class="w-full btn-gold py-3 rounded-xl text-sm font-semibold">Confirmar reserva</button>
+          </div>
+        </div>`;
+      document.body.appendChild(el);
+    }
+    function notificarAlmacenesRental(pedidoId) {
+      const p = (data.pedidosRental || []).find(x => String(x.id) === String(pedidoId));
+      if (!p) return;
+      if (!data.requerimientos) data.requerimientos = [];
+      const byOwner = {};
+      (p.items || []).forEach(it => {
+        const k = String(it.usuarioId || it.propietario || 'general');
+        if (!byOwner[k]) byOwner[k] = [];
+        byOwner[k].push(it);
+      });
+      Object.keys(byOwner).forEach(k => {
+        const group = byOwner[k];
+        const first = group[0];
+        const exists = data.requerimientos.find(r => r.pedidoRentalId === p.id && String(r.items && r.items[0] && (r.items[0].usuarioId || r.items[0].expertoNombre || '')) === k);
+        if (exists) return;
+        const reqId = 'REQ-RNT-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,5);
+        data.requerimientos.unshift({
+          id: reqId,
+          titulo: 'Rental · ' + group.map(g => g.nombre).join(', ').slice(0, 60),
+          cliente: p.clienteNombre || 'Cliente rental',
+          lugar: first.almacen || 'Almacén',
+          descripcion: 'Pedido ' + p.id + ' · herramientas: ' + group.map(g => g.nombre).join(', '),
+          estado: 'Pendiente',
+          fecha: new Date().toISOString().slice(0,10),
+          tipo: 'simple',
+          origen: 'rental',
+          pedidoRentalId: p.id,
+          items: [{
+            id: reqId + '-a',
+            area: 'Rental / Tools',
+            expertoNombre: first.propietario || '',
+            usuarioId: first.usuarioId || null,
+            monto: group.reduce((s,g)=>s+(Number(g.lineTotal)||0),0),
+            estado: 'Pendiente'
+          }]
+        });
+      });
+      p.estado = p.estado === 'Pendiente' ? 'En preparación' : p.estado;
+      saveSystemData();
+      try { actualizarBadgesSidebar(); } catch(e) {}
+      mostrarToast('Requerimientos enviados a los almacenes');
+      navigate('requerimientos');
+    }
+    function compartirLinkRental() {
+      const url = 'https://flyuhouse-sistem.vercel.app/r';
+      const msg = [
+        'FLYHOUSE Rental',
+        'Alquila herramientas profesionales para tu obra.',
+        'Mira el catálogo y reserva aquí 👇',
+        url
+      ].join('\\n');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(msg).then(() => mostrarToast('Link del rental copiado ✓')).catch(() => prompt('Copia:', url));
+      } else prompt('Copia:', msg);
+    }
+
     function setEstadoPedidoRental(id, estado) {
       const p = (data.pedidosRental || []).find(x => String(x.id) === String(id));
       if (!p) return;
@@ -10888,7 +10974,15 @@ inventario: () => {
     }
     function solicitarReservaRental() {
       if (!carritoRental.length) { mostrarToast('Agrega equipos a la reserva'); return; }
-      if (typeof requireStoreCliente === 'function' && !requireStoreCliente()) return;
+      if (!storeCliente) {
+        const nombre = (document.getElementById('rental-guest-nombre')?.value || '').trim();
+        const tel = (document.getElementById('rental-guest-tel')?.value || '').trim();
+        if (!nombre) {
+          abrirModalGuestRental();
+          return;
+        }
+        storeCliente = { id: 'guest-' + Date.now(), nombre, telefono: tel, email: '' };
+      }
       const dias = Math.max(1, parseInt(document.getElementById('rental-dias-global')?.value || '1', 10));
       carritoRental.forEach(x => {
         if ((x.rentalPeriodo || 'dia') === 'dia') { x.periodos = dias; x.dias = dias; }
@@ -10926,6 +11020,7 @@ inventario: () => {
         creado: new Date().toISOString()
       };
       data.pedidosRental.unshift(pedido);
+      try { if (typeof actualizarBadgesSidebar === 'function') actualizarBadgesSidebar(); } catch(e) {}
       // Crear requerimiento interno por cada almacén/propietario distinto
       if (!data.requerimientos) data.requerimientos = [];
       const byOwner = {};
