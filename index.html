@@ -3805,7 +3805,7 @@
             </label>
           </div>
           ${barraSeleccion('presupuestos')}
-          <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             ${lista.length ? lista.map(p => {
               const sel = seleccion.presupuestos.has(String(p.id));
               const stCls = p.estado==='Aceptado'?'bg-emerald-500 text-white':p.estado==='Enviado'||p.estado==='Visto'?'bg-blue-500 text-white':p.estado==='Consultado'?'bg-amber-500 text-white':'bg-ink-700 text-white';
@@ -3818,31 +3818,33 @@
               const nTools = (p.toolsList||[]).length;
               const borderAcc = p.estado==='Aceptado' ? 'ring-2 ring-emerald-400 border-emerald-200' : p.estado==='Consultado' ? 'ring-2 ring-amber-300 border-amber-200' : 'border-gold-100';
               return `
-              <div class="card-premium rounded-2xl overflow-hidden border ${borderAcc} ${sel?'ring-2 ring-gold-400':''} hover:shadow-lg transition-all flex flex-col">
-                <div class="relative aspect-[3/4] bg-ink-900">
+              <div class="card-premium rounded-2xl overflow-hidden border ${borderAcc} ${sel?'ring-2 ring-gold-400':''} hover:shadow-lg transition-all">
+                <div class="relative aspect-square bg-ink-900">
                   ${p.fotoDespues || p.fotoAntes
                     ? `<img src="${p.fotoDespues || p.fotoAntes}" class="w-full h-full object-cover" alt="">`
-                    : `<div class="w-full h-full flex items-center justify-center text-gold-400 text-[10px] tracking-widest uppercase px-3 text-center">FLYHOUSE</div>`}
-                  <div class="absolute top-2 left-2 flex items-center gap-1.5">
-                    <input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('presupuestos','${String(p.id).replace(/'/g,"\\'")}',event)" class="accent-amber-600 w-4 h-4" onclick="event.stopPropagation()">
-                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold shadow ${stCls}">${p.estado||'Borrador'}</span>
+                    : `<div class="w-full h-full flex items-center justify-center text-gold-400 text-xs tracking-widest uppercase">FLYHOUSE</div>`}
+                  <div class="absolute top-2.5 left-2.5 flex items-center gap-2">
+                    <input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('presupuestos','${String(p.id).replace(/'/g,"\\'")}',event)" class="accent-amber-600 w-5 h-5" onclick="event.stopPropagation()">
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold shadow ${stCls}">${p.estado||'Borrador'}</span>
                   </div>
-                  <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-2.5">
-                    <p class="text-white font-bold text-xs leading-tight line-clamp-2">${p.titulo||'Sin título'}</p>
-                    <p class="text-white/70 text-[10px] mt-0.5 truncate">${p.cliente||'Cliente'}${p.lugar ? ' · ' + p.lugar : ''}</p>
+                  <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                    <p class="text-white font-bold text-sm leading-tight line-clamp-2">${p.titulo||'Sin título'}</p>
+                    <p class="text-white/70 text-xs mt-0.5 truncate">${p.cliente||'Cliente'}</p>
                   </div>
                 </div>
-                <div class="p-3 space-y-2 flex-1 flex flex-col">
-                  <div>
-                    ${(p.totalOriginal && p.totalOriginal > p.total) ? `<p class="text-[10px] text-ink-400 line-through">S/ ${Number(p.totalOriginal).toLocaleString()}</p>` : ''}
-                    <p class="text-lg font-bold text-gold-700 leading-none">S/ ${Number(p.total||0).toLocaleString()}</p>
-                    <p class="text-[10px] text-ink-400 mt-1">${nPart} partida${nPart!==1?'s':''}${p.diasEjecucion ? ' · '+p.diasEjecucion+'d' : ''}</p>
+                <div class="p-3.5 space-y-3">
+                  <div class="flex items-end justify-between gap-2">
+                    <div>
+                      ${(p.totalOriginal && p.totalOriginal > p.total) ? `<p class="text-xs text-ink-400 line-through">S/ ${Number(p.totalOriginal).toLocaleString()}</p>` : ''}
+                      <p class="text-xl font-bold text-gold-700">S/ ${Number(p.total||0).toLocaleString()}</p>
+                    </div>
+                    <p class="text-xs text-ink-400">${nPart} part.</p>
                   </div>
-                  <div class="mt-auto grid grid-cols-2 gap-1.5">
-                    <button type="button" onclick="abrirModalPresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="px-2 py-1.5 text-[10px] border border-gold-200 rounded-lg hover:bg-gold-50">Editar</button>
-                    <button type="button" onclick="copiarLinkPresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="px-2 py-1.5 text-[10px] btn-gold rounded-lg">Link</button>
-                    <button type="button" onclick="abrirVistaClientePresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="px-2 py-1.5 text-[10px] border border-ink-200 rounded-lg">Vista</button>
-                    <button type="button" onclick="cambiarEstadoPresupuestoUI('${String(p.id).replace(/'/g,"\\'")}')" class="px-2 py-1.5 text-[10px] border border-gold-300 rounded-lg text-gold-800">Estado</button>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="abrirModalPresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="py-2.5 text-sm font-semibold border border-gold-200 rounded-xl hover:bg-gold-50">Editar</button>
+                    <button type="button" onclick="copiarLinkPresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="py-2.5 text-sm font-semibold btn-gold rounded-xl">Enviar</button>
+                    <button type="button" onclick="abrirVistaClientePresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="py-2.5 text-sm font-medium border border-ink-200 rounded-xl">Vista</button>
+                    <button type="button" onclick="abrirAccionesPresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="py-2.5 text-sm font-medium border border-gold-300 text-gold-800 rounded-xl">Más</button>
                   </div>
                 </div>
               </div>`;
@@ -6630,19 +6632,31 @@ inventario: () => {
               </div>
               <button type="button" onclick="cerrarVistaClientePres()" class="text-xs text-white/50 hover:text-white border border-white/20 rounded-full px-3 py-1.5">Cerrar</button>
             </div>
-            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight mb-2">${p.titulo || ''}</h1>
-            <p class="text-white/50 text-sm mb-8">${p.cliente || ''} ${p.lugar ? '· ' + p.lugar : ''}</p>
-            ${p.historia ? `<p class="text-white/70 text-sm leading-relaxed mb-8 border-l-2 border-gold-500 pl-4">${p.historia}</p>` : ''}
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-10">
+            ${(p.fotoDespues || p.fotoAntes) ? `
+            <div class="rounded-3xl overflow-hidden border border-gold-500/30 mb-6 shadow-gold">
+              <div class="relative">
+                <img src="${p.fotoDespues || p.fotoAntes}" class="w-full max-h-[70vh] object-cover" alt="Cómo quedaría">
+                <div class="absolute top-3 left-3 px-3 py-1 rounded-full bg-gold-500 text-ink-900 text-[10px] font-bold tracking-wider uppercase">Cómo quedaría</div>
+                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                  <p class="text-[10px] tracking-[0.25em] text-gold-400 uppercase">FLYHOUSE</p>
+                  <h1 class="text-xl sm:text-2xl font-bold">${p.titulo || ''}</h1>
+                  <p class="text-white/70 text-sm">${p.cliente || ''} ${p.lugar ? '· ' + p.lugar : ''}</p>
+                </div>
+              </div>
+            </div>` : `<h1 class="text-2xl font-bold mb-2">${p.titulo || ''}</h1><p class="text-white/50 text-sm mb-6">${p.cliente || ''} ${p.lugar ? '· ' + p.lugar : ''}</p>`}
+            ${p.historia ? `<p class="text-white/70 text-sm leading-relaxed mb-6 border-l-2 border-gold-500 pl-4">${p.historia}</p>` : ''}
+            ${(p.fotoAntes && p.fotoDespues) ? `
+            <p class="text-[10px] uppercase tracking-wider text-white/40 mb-2">Antes → después</p>
+            <div class="grid grid-cols-2 gap-2 mb-10">
               <div class="rounded-2xl overflow-hidden border border-white/10">
-                <p class="text-[10px] uppercase tracking-wider text-white/40 px-3 py-2 bg-white/5">Antes</p>
-                ${p.fotoAntes ? `<img src="${p.fotoAntes}" class="w-full h-48 object-cover" alt="Antes">` : `<div class="h-48 bg-white/5 flex items-center justify-center text-white/30 text-xs">Sin foto</div>`}
+                <p class="text-[10px] uppercase text-white/40 px-3 py-1.5 bg-white/5">Antes</p>
+                <img src="${p.fotoAntes}" class="w-full aspect-square object-cover" alt="Antes">
               </div>
               <div class="rounded-2xl overflow-hidden border border-gold-500/40">
-                <p class="text-[10px] uppercase tracking-wider text-gold-400 px-3 py-2 bg-gold-500/10">Cómo quedaría</p>
-                ${p.fotoDespues ? `<img src="${p.fotoDespues}" class="w-full h-48 object-cover" alt="Después">` : `<div class="h-48 bg-gold-500/5 flex items-center justify-center text-gold-500/40 text-xs">Render pendiente</div>`}
+                <p class="text-[10px] uppercase text-gold-400 px-3 py-1.5 bg-gold-500/10">Después</p>
+                <img src="${p.fotoDespues}" class="w-full aspect-square object-cover" alt="Después">
               </div>
-            </div>
+            </div>` : `<div class="mb-8"></div>`}
             <div class="rounded-2xl border border-white/10 overflow-hidden mb-8">
               <div class="px-4 py-3 bg-white/5 flex justify-between items-center">
                 <p class="text-xs font-semibold tracking-wide uppercase text-white/60">Cotización desglosada</p>
@@ -6708,23 +6722,52 @@ inventario: () => {
         return;
       }
     }
-    function cambiarEstadoPresupuestoUI(id) {
+    function fhCloseOverlay(id) {
+      document.getElementById(id)?.remove();
+    }
+    function abrirAccionesPresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
       if (!p) return;
-      const next = prompt('Nuevo estado (Borrador / Enviado / Visto / Consultado / Aceptado / Rechazado):', p.estado || 'Borrador');
-      if (!next) return;
-      const ok = ['Borrador','Enviado','Visto','Consultado','Aceptado','Rechazado'].find(s => s.toLowerCase() === next.trim().toLowerCase());
-      if (!ok) { mostrarToast('Estado no válido'); return; }
-      pedirPin('Cambiar estado', 'PIN master para editar el estado del presupuesto', () => {
-        p.estado = ok;
-        if (ok === 'Borrador' || ok === 'Enviado') {
-          p.respuestaCliente = '';
-        }
+      document.getElementById('modal-acc-pres')?.remove();
+      const el = document.createElement('div');
+      el.id = 'modal-acc-pres';
+      el.className = 'fixed inset-0 z-[97]';
+      const estados = ['Borrador','Enviado','Visto','Consultado','Aceptado','Rechazado'];
+      el.innerHTML = `
+        <div class="absolute inset-0 bg-ink-900/55 backdrop-blur-sm" onclick="fhCloseOverlay('modal-acc-pres')"></div>
+        <div class="absolute inset-0 flex items-end sm:items-center justify-center p-4">
+          <div class="relative bg-white rounded-2xl shadow-premium w-full max-w-sm border border-gold-200 overflow-hidden">
+            <div class="px-5 py-4 border-b border-gold-100">
+              <p class="text-[10px] uppercase tracking-wider text-ink-400">Presupuesto</p>
+              <h3 class="text-base font-bold text-ink-800 leading-snug">${(p.titulo||p.id).replace(/</g,'')}</h3>
+              <p class="text-xs text-ink-500 mt-1">Estado actual: <b>${p.estado||'Borrador'}</b></p>
+            </div>
+            <div class="p-4 space-y-2">
+              <p class="text-[10px] font-semibold uppercase text-ink-400">Cambiar estado (PIN master)</p>
+              <div class="grid grid-cols-2 gap-2">
+                ${estados.map(s => `<button type="button" onclick="aplicarEstadoPresupuesto('${String(p.id).replace(/'/g,"\\'")}','${s}')" class="py-2.5 text-sm font-medium rounded-xl border ${s===(p.estado||'Borrador')?'border-gold-500 bg-gold-50 text-gold-800':'border-gold-200 hover:bg-gold-50'}">${s}</button>`).join('')}
+              </div>
+              <button type="button" onclick="fhCloseOverlay('modal-acc-pres');abrirModalPresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="w-full py-3 text-sm font-semibold border border-gold-200 rounded-xl mt-2">Editar presupuesto</button>
+              <button type="button" onclick="fhCloseOverlay('modal-acc-pres');eliminarPresupuestoUI('${String(p.id).replace(/'/g,"\\'")}')" class="w-full py-3 text-sm font-semibold text-red-600 border border-red-200 rounded-xl">Eliminar</button>
+              <button type="button" onclick="fhCloseOverlay('modal-acc-pres')" class="w-full py-2.5 text-sm text-ink-500">Cancelar</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.appendChild(el);
+    }
+    function aplicarEstadoPresupuesto(id, estado) {
+      fhCloseOverlay('modal-acc-pres');
+      pedirPin('Cambiar estado', 'PIN master para actualizar este presupuesto', () => {
+        const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
+        if (!p) return;
+        p.estado = estado;
+        if (estado === 'Borrador' || estado === 'Enviado') p.respuestaCliente = '';
         saveSystemData();
         navigate('presupuestos');
-        mostrarToast('Estado actualizado: ' + ok);
+        mostrarToast('Estado: ' + estado);
       });
     }
+    function cambiarEstadoPresupuestoUI(id) { abrirAccionesPresupuesto(id); }
     function abrirModalPackPres() {
       const ids = [...(seleccion.presupuestos || [])];
       if (ids.length < 2) { mostrarToast('Selecciona al menos 2 presupuestos'); return; }
