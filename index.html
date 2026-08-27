@@ -6561,7 +6561,8 @@ inventario: () => {
     async function copiarLinkPresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
       if (!p) return;
-      if (p.estado === 'Borrador') p.estado = 'Enviado';
+      if (p.estado === 'Borrador' || !p.estado) p.estado = 'Enviado';
+      p.enviadoAt = p.enviadoAt || new Date().toISOString();
       if (!p.token) {
         p.token = 'fh' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       }
@@ -6611,11 +6612,19 @@ inventario: () => {
     function abrirVistaClientePresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
       if (!p) return;
-      if (p.estado === 'Borrador' || p.estado === 'Enviado') {
-        p.estado = 'Visto';
-        saveSystemData();
-      }
+      // Vista interna del equipo: NO marca "Visto"
       renderVistaClientePres(p);
+    }
+    function marcarPresupuestoVistoPorCliente(p) {
+      if (!p) return;
+      if (p.estado === 'Aceptado' || p.estado === 'Consultado' || p.estado === 'Rechazado') return;
+      if (p.estado !== 'Visto') {
+        p.estado = 'Visto';
+        p.vistoAt = new Date().toISOString();
+        p.vistoPorCliente = true;
+        try { saveSystemData(); } catch (e) {}
+        try { if (typeof scheduleCloudPush === 'function') scheduleCloudPush(); } catch (e) {}
+      }
     }
     function renderVistaClientePres(p) {
       const body = document.getElementById('vista-cliente-pres-body');
@@ -7042,6 +7051,12 @@ inventario: () => {
             }
             const loadElP = document.getElementById('pres-client-loading');
             if (pack) {
+              if (pack.estado === 'Enviado' || pack.estado === 'Borrador' || !pack.estado) {
+                pack.estado = 'Visto';
+                pack.vistoAt = new Date().toISOString();
+                try { saveSystemData(); } catch (e) {}
+                try { if (typeof scheduleCloudPush === 'function') scheduleCloudPush(); } catch (e) {}
+              }
               if (loadElP) loadElP.remove();
               renderVistaClientePack(pack);
               return;
@@ -7054,10 +7069,7 @@ inventario: () => {
           }
           const loadEl = document.getElementById('pres-client-loading');
           if (p) {
-            if (p.estado === 'Borrador' || p.estado === 'Enviado') {
-              p.estado = 'Visto';
-              try { if (typeof scheduleCloudPush === 'function') scheduleCloudPush(); } catch (e) {}
-            }
+            marcarPresupuestoVistoPorCliente(p);
             if (loadEl) loadEl.remove();
             renderVistaClientePres(p);
             // Asegurar que login/shell sigan ocultos
