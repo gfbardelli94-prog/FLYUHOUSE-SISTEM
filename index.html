@@ -5413,45 +5413,134 @@ inventario: () => {
       r.onload = () => { window._lifeContratoData = String(r.result).slice(0, 180000); };
       r.readAsDataURL(f);
     }
+    function kpisLifeProp(p) {
+      if (!p.movimientos) p.movimientos = [];
+      const res = (data.lifeReservas||[]).filter(r => String(r.propiedadId)===String(p.id) && !r.oculto);
+      const mov = p.movimientos || [];
+      const ingRes = res.reduce((s,r)=>s+(Number(r.total)||0),0);
+      const ingMov = mov.filter(m => m.tipo==='ingreso' || m.tipo==='reserva').reduce((s,m)=>s+(Number(m.monto)||0),0);
+      const costMov = mov.filter(m => ['gasto','servicio','inversion','variable','caja'].includes(m.tipo)).reduce((s,m)=>s+(Number(m.monto)||0),0);
+      const inv = Number(p.inversion)||0;
+      const fijoLista = (p.gastosFijos||[]).reduce((s,g)=>s+(Number(g.monto)||0),0);
+      const fijo = (Number(p.gastoFijo)||0) + fijoLista;
+      const caja = Number(p.cajaChica)||0;
+      const ingresos = ingRes + ingMov;
+      const costos = costMov + fijo;
+      const neto = ingresos - costos;
+      const inversionTotal = inv + mov.filter(m => m.tipo==='inversion').reduce((s,m)=>s+(Number(m.monto)||0),0);
+      const roi = inversionTotal ? ((neto) / inversionTotal * 100) : 0;
+      const roas = costos ? (ingresos / costos) : 0;
+      const equilibrio = inversionTotal; // punto de equilibrio = recuperar inversión
+      const avanceEq = inversionTotal ? Math.min(100, Math.max(0, ingresos / inversionTotal * 100)) : 0;
+      const vistas = Number(p.vistas)||0;
+      const inter = Number(p.interacciones)||0;
+      const prospectos = mov.filter(m => m.tipo==='prospecto').length;
+      const convertidos = res.length + mov.filter(m => m.tipo==='reserva').length;
+      const conv = (prospectos+convertidos) ? (convertidos / (prospectos+convertidos) * 100) : 0;
+      const porCat = {};
+      mov.forEach(m => {
+        const c = m.categoria || m.tipo || 'otros';
+        porCat[c] = (porCat[c]||0) + (Number(m.monto)||0);
+      });
+      return { ingresos, costos, neto, inversionTotal, roi, roas, avanceEq, vistas, inter, prospectos, convertidos, conv, res, mov, fijo, caja, porCat };
+    }
+    function registrarVistaLife(id) {
+      const p = (data.lifePropiedades||[]).find(x => String(x.id)===String(id));
+      if (!p) return;
+      p.vistas = (Number(p.vistas)||0) + 1;
+      try { saveSystemData(); } catch(e) {}
+    }
+    function guardarMovLife(id) {
+      const p = (data.lifePropiedades||[]).find(x => String(x.id)===String(id));
+      if (!p) return;
+      if (!p.movimientos) p.movimientos = [];
+      let tipo = document.getElementById('lm-tipo')?.value || 'variable';
+      const monto = parseFloat(document.getElementById('lm-monto')?.value)||0;
+      const fecha = document.getElementById('lm-fecha')?.value || new Date().toISOString().slice(0,10);
+      const cliente = document.getElementById('lm-cliente')?.value.trim() || '';
+      const nota = document.getElementById('lm-nota')?.value.trim() || '';
+      const categoria = document.getElementById('lm-cat')?.value.trim() || '';
+      const sub = document.getElementById('lm-sub')?.value.trim() || '';
+      if (!nota && !monto && !categoria) { mostrarToast('Completa el evento'); return; }
+      if (tipo === 'fijo-item') {
+        if (!p.gastosFijos) p.gastosFijos = [];
+        p.gastosFijos.push({ id:'GF-'+Date.now(), categoria, sub, item: sub||categoria, monto });
+        tipo = 'gasto';
+      }
+      if (tipo === 'caja') {
+        p.cajaChica = (Number(p.cajaChica)||0) + monto;
+      }
+      p.movimientos.unshift({
+        id: 'LM-' + Date.now(),
+        tipo, monto, fecha, cliente, nota, categoria, subcategoria: sub, mes: (fecha||'').slice(0,7)
+      });
+      if (tipo==='prospecto') p.interacciones = (Number(p.interacciones)||0) + 1;
+      saveSystemData();
+      mostrarToast('Evento registrado');
+      verDashboardLifeProp(id);
+    }
     function verDashboardLifeProp(id) {
       ensureLifeData();
       const p = (data.lifePropiedades||[]).find(x => String(x.id)===String(id));
       if (!p) return;
-      const res = (data.lifeReservas||[]).filter(r => String(r.propiedadId)===String(p.id) && !r.oculto);
-      const ing = res.reduce((s,r)=>s+(Number(r.total)||0),0);
-      const fijo = Number(p.gastoFijo)||0;
-      const meta = Number(p.metaMensual)||0;
-      const neto = ing - fijo;
-      const avance = meta ? Math.min(100, Math.round(ing/meta*100)) : 0;
+      const k = kpisLifeProp(p);
       document.getElementById('modal-life-dash')?.remove();
       const el = document.createElement('div');
       el.id = 'modal-life-dash';
       el.className = 'fixed inset-0 z-[96]';
       el.innerHTML = `<div class="absolute inset-0 bg-ink-900/55" onclick="this.parentElement.remove()"></div>
         <div class="absolute inset-0 flex items-start justify-center overflow-y-auto p-4">
-          <div class="relative bg-white rounded-2xl w-full max-w-2xl my-6 border border-gold-200 overflow-hidden">
+          <div class="relative bg-white rounded-2xl w-full max-w-3xl my-6 border border-gold-200 overflow-hidden">
             <div class="bg-ink-900 text-white p-5">
-              <p class="text-gold-400 text-[10px] uppercase tracking-wider">B&B · Life · Desempeño</p>
+              <p class="text-gold-400 text-[10px] uppercase tracking-wider">Libro de la propiedad · matriz</p>
               <h3 class="text-xl font-bold mt-1">${p.titulo||p.nombre||''}</h3>
-              <p class="text-xs text-white/50">${(p.uso||'vivienda')} · ${(p.plazo||'corta')} · ${p.ownerNombre||'sin propietario ligado'}</p>
+              <p class="text-xs text-white/50">${p.uso||''} · ${p.ownerNombre||'sin propietario'} · ${k.vistas} vistas · ${k.inter} interacciones</p>
             </div>
             <div class="p-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Generado</p><p class="font-bold text-emerald-700">S/ ${Math.round(ing).toLocaleString()}</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Gasto fijo</p><p class="font-bold">S/ ${Math.round(fijo).toLocaleString()}</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Neto</p><p class="font-bold ${neto>=0?'text-emerald-700':'text-red-600'}">S/ ${Math.round(neto).toLocaleString()}</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Meta</p><p class="font-bold">${avance}%</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Ingresos</p><p class="font-bold text-emerald-700">S/ ${Math.round(k.ingresos).toLocaleString()}</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Costos</p><p class="font-bold text-red-600">S/ ${Math.round(k.costos).toLocaleString()}</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">ROI</p><p class="font-bold ${k.roi>=0?'text-emerald-700':'text-red-600'}">${k.roi.toFixed(1)}%</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">ROAS</p><p class="font-bold">${k.roas.toFixed(2)}x</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Inversión</p><p class="font-bold">S/ ${Math.round(k.inversionTotal).toLocaleString()}</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Punto equilibrio</p><p class="font-bold">${k.avanceEq.toFixed(0)}%</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Conversión</p><p class="font-bold">${k.conv.toFixed(0)}%</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Neto</p><p class="font-bold">S/ ${Math.round(k.neto).toLocaleString()}</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Fijos mes</p><p class="font-bold">S/ ${Math.round(k.fijo||0).toLocaleString()}</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Caja chica</p><p class="font-bold">S/ ${Math.round(k.caja||0).toLocaleString()}</p></div>
             </div>
-            <div class="px-5 pb-2"><div class="h-2 rounded-full bg-ink-100"><div class="h-2 rounded-full bg-gold-500" style="width:${avance}%"></div></div></div>
-            <div class="p-5">
-              <p class="text-xs font-semibold mb-2">Reservas / agenda</p>
-              ${res.length?res.map(r=>`<p class="text-sm py-1 border-b border-gold-50">${r.checkIn||''} → ${r.checkOut||''} · ${r.huesped||''} · S/ ${Number(r.total||0).toLocaleString()} · ${r.estado||''}</p>`).join(''):'<p class="text-xs text-ink-400">Sin reservas aún. Créalas en Reservas.</p>'}
-              <p class="text-xs font-semibold mt-4 mb-1">Cross-selling</p>
-              <p class="text-xs text-ink-500">Desde acá puedes mandar un lead a Property Service si el local necesita mantenimiento o tienda.</p>
-              <div class="flex gap-2 mt-3">
-                <button type="button" onclick="abrirModalLifeReserva();document.getElementById('modal-life-dash')?.remove()" class="flex-1 btn-gold py-2.5 rounded-xl text-sm font-semibold">Nueva reserva</button>
-                <button type="button" onclick="crearLeadMantenimientoLife('${p.id}')" class="flex-1 border border-gold-200 py-2.5 rounded-xl text-sm">Lead mantenimiento</button>
+            <div class="px-5"><div class="h-2 rounded-full bg-ink-100"><div class="h-2 rounded-full bg-gold-500" style="width:${Math.min(100,k.avanceEq)}%"></div></div>
+              <p class="text-[10px] text-ink-400 mt-1">Avance al punto de equilibrio (recuperar inversión)</p></div>
+            <div class="p-5 border-t border-gold-100 space-y-2">
+              <p class="text-xs font-semibold">Cargar movimiento del mes</p>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <select id="lm-tipo" class="px-2 py-2 text-xs border border-gold-200 rounded-xl">
+                  <option value="ingreso">Ingreso</option>
+                  <option value="reserva">Reserva cobrada</option>
+                  <option value="variable">Gasto variable</option>
+                  <option value="servicio">Servicio</option>
+                  <option value="fijo-item">Gasto fijo (ítem mensual)</option>
+                  <option value="caja">Caja chica</option>
+                  <option value="inversion">Inversión extra</option>
+                  <option value="prospecto">Prospecto no convertido</option>
+                </select>
+                <input id="lm-cat" class="px-2 py-2 text-xs border border-gold-200 rounded-xl" placeholder="Categoría (luz, agua, limpieza…)">
+                <input id="lm-sub" class="px-2 py-2 text-xs border border-gold-200 rounded-xl" placeholder="Subcategoría / ítem">
+                <input id="lm-monto" type="number" step="0.01" class="px-2 py-2 text-xs border border-gold-200 rounded-xl" placeholder="S/ monto">
+                <input id="lm-fecha" type="date" class="px-2 py-2 text-xs border border-gold-200 rounded-xl">
+                <input id="lm-cliente" class="px-2 py-2 text-xs border border-gold-200 rounded-xl" placeholder="Cliente / proveedor">
+                <input id="lm-nota" class="px-2 py-2 text-xs border border-gold-200 rounded-xl col-span-2 sm:col-span-3" placeholder="Detalle del movimiento">
               </div>
-              <button type="button" onclick="document.getElementById('modal-life-dash')?.remove()" class="w-full mt-2 text-sm text-ink-500">Cerrar</button>
+              <button type="button" onclick="guardarMovLife('${p.id}')" class="btn-gold px-4 py-2 rounded-xl text-sm font-semibold">Registrar en el libro</button>
+              <p class="text-[10px] text-ink-400">El sistema cruza ingresos, fijos, variables, servicios y caja para ROI, ROAS y equilibrio.</p>
+            </div>
+            <div class="px-5 pb-5 max-h-56 overflow-y-auto">
+              <p class="text-xs font-semibold mb-2">Historial</p>
+              ${k.mov.length?k.mov.map(m=>`<p class="text-xs py-1.5 border-b border-gold-50">${m.fecha||''} · <b>${m.tipo}</b> · ${m.cliente||''} · S/ ${Number(m.monto||0).toLocaleString()} · ${m.nota||''}</p>`).join(''):'<p class="text-xs text-ink-400">Sin eventos cargados aún.</p>'}
+              ${k.res.length?`<p class="text-xs font-semibold mt-3">Reservas del sistema</p>`+k.res.map(r=>`<p class="text-xs py-1 border-b border-gold-50">${r.checkIn||''} → ${r.checkOut||''} · ${r.huesped||''} · S/ ${Number(r.total||0).toLocaleString()}</p>`).join(''):''}
+            </div>
+            <div class="p-4 border-t border-gold-100 flex gap-2">
+              <button type="button" onclick="abrirModalLifeReserva();document.getElementById('modal-life-dash')?.remove()" class="flex-1 btn-gold py-2.5 rounded-xl text-sm font-semibold">Nueva reserva</button>
+              <button type="button" onclick="document.getElementById('modal-life-dash')?.remove()" class="flex-1 border border-gold-200 py-2.5 rounded-xl text-sm">Cerrar</button>
             </div>
           </div>
         </div>`;
@@ -5609,6 +5698,7 @@ inventario: () => {
       if (esPublico === undefined) esPublico = !!window._lifePublicView;
       const p = data.lifePropiedades.find(x => String(x.id) === String(id));
       if (!p) return;
+      try { if (esPublico) registrarVistaLife(p.id); } catch(e) {}
       const fotos = (p.fotos && p.fotos.length) ? p.fotos : [];
       window._lifeCarousel = { id: p.id, idx: 0, fotos };
       document.getElementById('modal-life-detalle')?.remove();
@@ -8589,12 +8679,12 @@ inventario: () => {
       ensureLifeData();
       const p = (data.lifePropiedades||[]).find(x => String(x.id)===String(id));
       if (!p) return;
-      const res = (data.lifeReservas||[]).filter(r => String(r.propiedadId)===String(p.id));
-      const bruto = res.reduce((s,r)=>s+(Number(r.total)||0),0);
+      const k = kpisLifeProp(p);
+      const bruto = k.ingresos;
       const comisionPct = Number(p.comisionPlataforma)!=null && p.comisionPlataforma!=='' ? Number(p.comisionPlataforma) : 15;
       const comision = bruto * comisionPct / 100;
       const fijo = Number(p.gastoFijo)||0;
-      const netoOwner = bruto - comision - fijo;
+      const netoOwner = k.neto - comision;
       const meta = Number(p.metaMensual)||0;
       const el = document.createElement('div');
       el.id = 'modal-owner-life';
