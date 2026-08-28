@@ -299,7 +299,7 @@
         </div>
         <nav class="flex-1 p-2 space-y-0.5 overflow-y-auto">
           <button type="button" onclick="setPortalTab('home')" data-ptab="home" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Inicio</button>
-          <button type="button" onclick="setPortalTab('pres')" data-ptab="pres" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Presupuestos</button>
+          <button type="button" onclick="setPortalTab('pres')" data-ptab="pres" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center justify-between gap-2">Presupuestos <span id="badge-portal-pres" class="nav-badge hidden">0</span></button>
           <button type="button" onclick="setPortalTab('store')" data-ptab="store" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Store</button>
           <button type="button" onclick="setPortalTab('rental')" data-ptab="rental" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Rental</button>
           <button type="button" onclick="setPortalTab('life')" data-ptab="life" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Life</button>
@@ -2188,6 +2188,7 @@
           if (remote) {
             data.storeClientes = mergeById(data.storeClientes, remote.storeClientes);
             data.soporteMensajes = mergeById(data.soporteMensajes, remote.soporteMensajes);
+            data.presupuestos = mergeById(data.presupuestos, remote.presupuestos);
           }
         } catch (e) {}
         const payload = buildPersistPayload();
@@ -3979,7 +3980,7 @@
                     : `<div class="w-full h-full flex items-center justify-center text-gold-400 text-xs tracking-widest uppercase">FLYHOUSE</div>`}
                   <div class="absolute top-2.5 left-2.5 flex items-center gap-2">
                     <input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('presupuestos','${String(p.id).replace(/'/g,"\\'")}',event)" class="accent-amber-600 w-5 h-5" onclick="event.stopPropagation()">
-                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold shadow ${stCls}">${p.estado||'Borrador'}</span>
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold shadow ${stCls}">${p.vistoPorCliente ? 'Visto por cliente' : (p.estado||'Borrador')}</span>
                   </div>
                   <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                     <p class="text-white font-bold text-sm leading-tight line-clamp-2">${p.titulo||'Sin título'}</p>
@@ -6788,7 +6789,8 @@ inventario: () => {
     function abrirVistaClientePresupuesto(id) {
       const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
       if (!p) return;
-      // Vista interna del equipo: NO marca "Visto"
+      const desdePortal = !!(storeCliente && sessionStorage.getItem('fh_client_logged') === '1');
+      if (desdePortal) marcarPresupuestoVistoPorCliente(p);
       renderVistaClientePres(p);
     }
     function marcarPresupuestoVistoPorCliente(p) {
@@ -7005,12 +7007,14 @@ inventario: () => {
       (data.presupuestos || []).forEach(p => {
         if (!ids.includes(String(p.id))) return;
         p.clienteId = cli.id;
-        p.clienteEmail = cli.email;
-        if (!p.cliente) p.cliente = cli.nombre;
+        p.clienteEmail = cli.email || '';
+        p.cliente = cli.nombre;
         if (p.estado === 'Borrador') p.estado = 'Enviado';
         p.enviadoPortalAt = new Date().toISOString();
+        p.vistoPorCliente = false;
       });
       saveSystemData();
+      try { if (typeof cloudPush === 'function') cloudPush(); } catch(e) {}
       document.getElementById('modal-send-portal')?.remove();
       limpiarSeleccion('presupuestos');
       mostrarToast('Listo · ' + ids.length + ' presupuesto(s) en la bandeja de ' + cli.nombre);
@@ -8421,6 +8425,7 @@ inventario: () => {
       const h = document.getElementById('portal-hello');
       if (h) h.textContent = 'Hola, ' + (cli.nombre || '').split(' ')[0];
       setPortalTab('home');
+      try { actualizarBadgePortal(); } catch(e) {}
     }
     function cerrarPortalCliente() {
       sessionStorage.removeItem('fh_client_logged');
@@ -8430,23 +8435,39 @@ inventario: () => {
       hideAllEntryScreens();
       document.getElementById('landing-screen')?.classList.remove('hidden');
     }
+    function normNombre(s) {
+      return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+    }
     function presupuestosDelCliente() {
       const cli = storeCliente || {};
-      const nom = (cli.nombre || '').toLowerCase();
-      const em = (cli.email || '').toLowerCase();
+      const nom = normNombre(cli.nombre);
+      const em = (cli.email || '').toLowerCase().trim();
       return (data.presupuestos || []).filter(p => {
         if (p.oculto) return false;
-        if (p.clienteId && String(p.clienteId) === String(cli.id)) return true;
-        const e = (p.clienteEmail || '').toLowerCase();
+        if (cli.id && p.clienteId && String(p.clienteId) === String(cli.id)) return true;
+        const e = (p.clienteEmail || '').toLowerCase().trim();
         if (em && e && e === em) return true;
+        const cn = normNombre(p.cliente);
+        if (nom && cn && (cn === nom || cn.includes(nom) || nom.includes(cn))) return true;
         return false;
       });
+    }
+    function pendientesPortalCliente() {
+      return presupuestosDelCliente().filter(p => !p.vistoPorCliente && p.estado !== 'Aceptado' && p.estado !== 'Rechazado');
+    }
+    function actualizarBadgePortal() {
+      const n = pendientesPortalCliente().length;
+      const el = document.getElementById('badge-portal-pres');
+      if (!el) return;
+      if (n > 0) { el.textContent = n; el.classList.remove('hidden'); }
+      else el.classList.add('hidden');
     }
     function setPortalTab(tab) {
       document.querySelectorAll('#client-portal .ptab').forEach(b => {
         const on = b.getAttribute('data-ptab') === tab;
         b.className = 'ptab w-full text-left px-3 py-2.5 rounded-lg text-sm ' + (on ? 'bg-ink-800 text-gold-400 font-semibold' : 'text-slate-400 hover:text-white hover:bg-ink-800');
       });
+      try { actualizarBadgePortal(); } catch(e) {}
       const box = document.getElementById('portal-body');
       if (!box) return;
       const pres = presupuestosDelCliente();
