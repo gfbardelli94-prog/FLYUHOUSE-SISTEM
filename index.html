@@ -289,27 +289,29 @@
   </div>
 
   <!-- PORTAL CLIENTE -->
-  <div id="client-portal" class="hidden fixed inset-0 z-[95] bg-cream-100 overflow-y-auto">
-    <header class="sticky top-0 z-10 bg-ink-900 text-white border-b border-gold-500/20">
-      <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-        <div>
-          <p class="text-[10px] uppercase tracking-[0.2em] text-gold-400">FLYHOUSE</p>
-          <p class="font-semibold" id="portal-hello">Hola</p>
+  <div id="client-portal" class="hidden fixed inset-0 z-[95] bg-cream-100">
+    <div class="flex h-full">
+      <aside class="w-56 flex-shrink-0 bg-ink-900 text-slate-400 flex flex-col border-r border-ink-700">
+        <div class="p-4 border-b border-ink-700">
+          <p class="text-white font-bold tracking-wide">FLYHOUSE</p>
+          <p class="text-[9px] uppercase tracking-wider text-gold-400">Mi espacio</p>
+          <p class="text-xs text-white mt-2" id="portal-hello">Hola</p>
         </div>
-        <div class="flex gap-2">
-          <button type="button" onclick="setPortalTab('chat')" class="px-3 py-2 text-xs rounded-xl border border-white/15">Soporte</button>
-          <button type="button" onclick="cerrarPortalCliente()" class="px-3 py-2 text-xs rounded-xl border border-white/15">Salir</button>
+        <nav class="flex-1 p-2 space-y-0.5 overflow-y-auto">
+          <button type="button" onclick="setPortalTab('home')" data-ptab="home" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Inicio</button>
+          <button type="button" onclick="setPortalTab('pres')" data-ptab="pres" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Presupuestos</button>
+          <button type="button" onclick="setPortalTab('store')" data-ptab="store" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Store</button>
+          <button type="button" onclick="setPortalTab('rental')" data-ptab="rental" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Rental</button>
+          <button type="button" onclick="setPortalTab('life')" data-ptab="life" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Life</button>
+          <button type="button" onclick="setPortalTab('chat')" data-ptab="chat" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Asesor</button>
+        </nav>
+        <div class="p-3 border-t border-ink-700">
+          <button type="button" onclick="cerrarPortalCliente()" class="w-full text-xs py-2 rounded-lg border border-ink-600 text-ink-300">Salir</button>
         </div>
-      </div>
-      <div class="max-w-5xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto">
-        <button type="button" onclick="setPortalTab('home')" data-ptab="home" class="ptab px-3 py-1.5 rounded-full text-xs font-semibold bg-gold-500 text-ink-900">Inicio</button>
-        <button type="button" onclick="setPortalTab('pres')" data-ptab="pres" class="ptab px-3 py-1.5 rounded-full text-xs font-semibold bg-white/10">Presupuestos</button>
-        <button type="button" onclick="setPortalTab('rental')" data-ptab="rental" class="ptab px-3 py-1.5 rounded-full text-xs font-semibold bg-white/10">Rental</button>
-        <button type="button" onclick="setPortalTab('life')" data-ptab="life" class="ptab px-3 py-1.5 rounded-full text-xs font-semibold bg-white/10">Life</button>
-        <button type="button" onclick="setPortalTab('chat')" data-ptab="chat" class="ptab px-3 py-1.5 rounded-full text-xs font-semibold bg-white/10">Chat</button>
-      </div>
-    </header>
-    <main id="portal-body" class="max-w-5xl mx-auto px-4 py-6"></main>
+      </aside>
+      <main id="portal-body" class="flex-1 overflow-y-auto p-5 sm:p-7"></main>
+    </div>
+    <button type="button" onclick="setPortalTab('chat')" class="fixed bottom-5 right-5 z-[96] w-14 h-14 rounded-full text-ink-900 font-bold shadow-gold ai-fab-pulse" style="background:linear-gradient(135deg,#D4AF37,#C9A227)" title="Hablar con un asesor">💬</button>
   </div>
 
   <!-- LOGIN CINEMATOGRÁFICO -->
@@ -2594,7 +2596,8 @@
         <span class="text-sm font-semibold text-ink-800">${n} seleccionado${n>1?'s':''}</span>
         <button onclick="accionMasiva('${tipo}','eliminar')" class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100">Eliminar</button>
         <button onclick="accionMasiva('${tipo}','ocultar')" class="px-3 py-1.5 text-xs font-semibold text-ink-700 bg-white border border-gold-200 rounded-lg hover:bg-gold-50">Ocultar</button>
-        ${tipo==='presupuestos' ? `<button onclick="abrirModalPackPres()" class="px-3 py-1.5 text-xs font-semibold text-ink-900 btn-gold rounded-lg">Pack + promoción</button>` : ''}
+        ${tipo==='presupuestos' ? `<button onclick="abrirModalPackPres()" class="px-3 py-1.5 text-xs font-semibold text-ink-900 btn-gold rounded-lg">Pack + promoción</button>
+        <button onclick="abrirEnviarPortalCliente()" class="px-3 py-1.5 text-xs font-semibold border border-gold-300 rounded-lg hover:bg-gold-50">Enviar al portal del cliente</button>` : ''}
         <button onclick="limpiarSeleccion('${tipo}')" class="px-3 py-1.5 text-xs text-ink-500 hover:text-ink-700">Limpiar selección</button>
       </div>`;
     }
@@ -5943,6 +5946,9 @@ inventario: () => {
       document.getElementById('pres-prev-antes').innerHTML = '';
       document.getElementById('pres-prev-despues').innerHTML = '';
       document.getElementById('pres-partidas').innerHTML = '';
+      llenarSelectClientesPortal('pres-cliente-user');
+      const hid = document.getElementById('pres-cliente-id');
+      if (hid) hid.value = '';
       document.getElementById('pres-total-live').textContent = '0';
       if (id) {
         const p = (data.presupuestos || []).find(x => String(x.id) === String(id));
@@ -5951,6 +5957,9 @@ inventario: () => {
           document.getElementById('pres-title').textContent = 'Editar presupuesto';
           document.getElementById('pres-titulo').value = p.titulo || '';
           document.getElementById('pres-cliente').value = p.cliente || '';
+          document.getElementById('pres-cliente-id').value = p.clienteId || '';
+          const selU = document.getElementById('pres-cliente-user');
+          if (selU && p.clienteId) selU.value = String(p.clienteId);
           document.getElementById('pres-lugar').value = p.lugar || '';
           document.getElementById('pres-historia').value = p.historia || '';
           if (document.getElementById('pres-equipo')) document.getElementById('pres-equipo').value = p.equipo || '';
@@ -6580,6 +6589,12 @@ inventario: () => {
       const payload = {
         titulo: document.getElementById('pres-titulo').value.trim(),
         cliente: document.getElementById('pres-cliente').value.trim(),
+        clienteId: document.getElementById('pres-cliente-id')?.value || null,
+        clienteEmail: (function(){
+          const id = document.getElementById('pres-cliente-id')?.value;
+          const cli = (data.storeClientes||[]).find(c => String(c.id)===String(id));
+          return cli ? cli.email : '';
+        })(),
         lugar: document.getElementById('pres-lugar').value.trim(),
         historia: document.getElementById('pres-historia').value.trim(),
         equipo: equipoList.join(', ') || document.getElementById('pres-equipo')?.value.trim() || '',
@@ -6917,7 +6932,69 @@ inventario: () => {
       });
     }
     function cambiarEstadoPresupuestoUI(id) { abrirAccionesPresupuesto(id); }
-    function abrirModalPackPres() {
+    function llenarSelectClientesPortal(selId) {
+      const sel = document.getElementById(selId);
+      if (!sel) return;
+      const cur = sel.value;
+      const list = (data.storeClientes || []).slice().sort((a,b)=>String(a.nombre||'').localeCompare(b.nombre||''));
+      sel.innerHTML = '<option value="">— Enviar a usuario de la plataforma (opcional) —</option>' +
+        list.map(c => `<option value="${c.id}">${(c.nombre||'Cliente')} · ${c.email||''}</option>`).join('');
+      if (cur) sel.value = cur;
+    }
+    function onPresClienteUser(sel) {
+      const cli = (data.storeClientes || []).find(c => String(c.id) === String(sel.value));
+      const hid = document.getElementById('pres-cliente-id');
+      if (hid) hid.value = sel.value || '';
+      if (cli) {
+        const nom = document.getElementById('pres-cliente');
+        if (nom && !nom.value.trim()) nom.value = cli.nombre || '';
+        else if (nom) nom.value = cli.nombre || nom.value;
+      }
+    }
+    function abrirEnviarPortalCliente() {
+      const ids = [...(seleccion.presupuestos || [])];
+      if (!ids.length) { mostrarToast('Selecciona uno o más presupuestos'); return; }
+      const list = (data.storeClientes || []);
+      if (!list.length) { mostrarToast('Aún no hay clientes registrados en la plataforma'); return; }
+      document.getElementById('modal-send-portal')?.remove();
+      const el = document.createElement('div');
+      el.id = 'modal-send-portal';
+      el.className = 'fixed inset-0 z-[97]';
+      el.innerHTML = `
+        <div class="absolute inset-0 bg-ink-900/55" onclick="this.parentElement.remove()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+          <div class="relative bg-white rounded-2xl w-full max-w-md p-5 border border-gold-200 space-y-3">
+            <h3 class="font-bold text-ink-800">Enviar a la bandeja del cliente</h3>
+            <p class="text-xs text-ink-500">${ids.length} presupuesto(s). El cliente los verá al entrar a su cuenta.</p>
+            <select id="send-portal-user" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl"></select>
+            <div class="flex gap-2">
+              <button type="button" onclick="document.getElementById('modal-send-portal')?.remove()" class="flex-1 py-2.5 border border-gold-200 rounded-xl text-sm">Cancelar</button>
+              <button type="button" onclick="confirmarEnviarPortal()" class="flex-1 btn-gold py-2.5 rounded-xl text-sm font-semibold">Enviar al portal</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.appendChild(el);
+      llenarSelectClientesPortal('send-portal-user');
+    }
+    function confirmarEnviarPortal() {
+      const uid = document.getElementById('send-portal-user')?.value;
+      const cli = (data.storeClientes || []).find(c => String(c.id) === String(uid));
+      if (!cli) { mostrarToast('Elige un usuario'); return; }
+      const ids = [...(seleccion.presupuestos || [])];
+      (data.presupuestos || []).forEach(p => {
+        if (!ids.includes(String(p.id))) return;
+        p.clienteId = cli.id;
+        p.clienteEmail = cli.email;
+        if (!p.cliente) p.cliente = cli.nombre;
+        if (p.estado === 'Borrador') p.estado = 'Enviado';
+        p.enviadoPortalAt = new Date().toISOString();
+      });
+      saveSystemData();
+      document.getElementById('modal-send-portal')?.remove();
+      limpiarSeleccion('presupuestos');
+      mostrarToast('Listo · ' + ids.length + ' presupuesto(s) en la bandeja de ' + cli.nombre);
+    }
+        function abrirModalPackPres() {
       const ids = [...(seleccion.presupuestos || [])];
       if (ids.length < 2) { mostrarToast('Selecciona al menos 2 presupuestos'); return; }
       const items = (data.presupuestos || []).filter(p => ids.includes(String(p.id)));
@@ -8248,93 +8325,116 @@ inventario: () => {
       const em = (cli.email || '').toLowerCase();
       return (data.presupuestos || []).filter(p => {
         if (p.oculto) return false;
-        const c = (p.cliente || '').toLowerCase();
-        const e = (p.clienteEmail || '').toLowerCase();
         if (p.clienteId && String(p.clienteId) === String(cli.id)) return true;
+        const e = (p.clienteEmail || '').toLowerCase();
         if (em && e && e === em) return true;
-        if (nom && c && (c.includes(nom) || nom.includes(c))) return true;
         return false;
       });
     }
     function setPortalTab(tab) {
-      document.querySelectorAll('.ptab').forEach(b => {
+      document.querySelectorAll('#client-portal .ptab').forEach(b => {
         const on = b.getAttribute('data-ptab') === tab;
-        b.className = 'ptab px-3 py-1.5 rounded-full text-xs font-semibold ' + (on ? 'bg-gold-500 text-ink-900' : 'bg-white/10 text-white');
+        b.className = 'ptab w-full text-left px-3 py-2.5 rounded-lg text-sm ' + (on ? 'bg-ink-800 text-gold-400 font-semibold' : 'text-slate-400 hover:text-white hover:bg-ink-800');
       });
       const box = document.getElementById('portal-body');
       if (!box) return;
+      const pres = presupuestosDelCliente();
+      const valor = pres.reduce((s,p)=>s+(Number(p.total)||0),0);
+      const ahorro = pres.reduce((s,p)=>s+Math.max(0,(Number(p.totalOriginal)||0)-(Number(p.total)||0)),0);
+      const ofertas = pres.filter(p => Number(p.totalOriginal||0) > Number(p.total||0) || p.oferta);
       if (tab === 'pres') {
-        const lista = presupuestosDelCliente();
-        box.innerHTML = `<h2 class="text-lg font-bold text-ink-800 mb-3">Tus presupuestos</h2>` +
-          (lista.length ? lista.map(p => `
-            <div class="card-premium rounded-2xl p-4 mb-3 flex gap-3">
-              ${p.fotoDespues || p.fotoAntes ? `<img src="${p.fotoDespues||p.fotoAntes}" class="w-20 h-20 rounded-xl object-cover">` : ''}
-              <div class="flex-1">
-                <p class="font-bold text-ink-800">${p.titulo||''}</p>
-                <p class="text-xs text-ink-500">${p.lugar||''} · ${p.estado||''}</p>
-                <p class="text-gold-700 font-bold mt-1">S/ ${Number(p.total||0).toLocaleString()}</p>
-                <button type="button" onclick="abrirVistaClientePresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="mt-2 text-sm font-semibold text-gold-700">Ver propuesta</button>
+        box.innerHTML = `<h2 class="text-xl font-bold text-ink-800 mb-1">Tus presupuestos</h2>
+          <p class="text-sm text-ink-500 mb-4">Como un catálogo: entra, compara y decide.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">` +
+          (pres.length ? pres.map(p => {
+            const oferta = Number(p.totalOriginal||0) > Number(p.total||0);
+            return `<div class="card-premium rounded-2xl overflow-hidden ${oferta?'ring-2 ring-red-500 oferta-pulse':''}">
+              <div class="relative aspect-square bg-ink-900">
+                ${p.fotoDespues||p.fotoAntes?`<img src="${p.fotoDespues||p.fotoAntes}" class="w-full h-full object-cover">`:'<div class="w-full h-full flex items-center justify-center text-gold-400 text-xs">FLYHOUSE</div>'}
+                ${oferta?`<span class="absolute top-2 right-2 px-2 py-1 rounded-full bg-red-600 text-white text-[10px] font-bold">OFERTA</span>`:''}
+                <span class="absolute top-2 left-2 px-2 py-1 rounded-full bg-black/60 text-white text-[10px]">${p.estado||''}</span>
               </div>
-            </div>`).join('') : `<p class="text-ink-500 text-sm">Aún no tienes presupuestos asignados.</p>`);
+              <div class="p-3">
+                <p class="font-bold text-ink-800 line-clamp-2">${p.titulo||''}</p>
+                <p class="text-xs text-ink-400">${p.lugar||''}</p>
+                ${oferta?`<p class="text-xs text-ink-400 line-through">S/ ${Number(p.totalOriginal).toLocaleString()}</p>`:''}
+                <p class="text-lg font-bold ${oferta?'text-red-600':'text-gold-700'}">S/ ${Number(p.total||0).toLocaleString()}</p>
+                <button type="button" onclick="abrirVistaClientePresupuesto('${String(p.id).replace(/'/g,"\\'")}');registrarActividadCliente('vio presupuesto','${String(p.id).replace(/'/g,"\\'")}')" class="mt-2 w-full py-2.5 text-sm font-semibold btn-gold rounded-xl">Ver propuesta</button>
+              </div>
+            </div>`;
+          }).join('') : `<p class="col-span-full text-ink-500">Aún no tienes presupuestos en tu bandeja.</p>`) + `</div>`;
+      } else if (tab === 'store') {
+        registrarActividadCliente('abrió Store');
+        box.innerHTML = `<h2 class="text-xl font-bold mb-2">FLYHOUSE Store</h2><p class="text-sm text-ink-500 mb-4">Decoración, materiales e implementación para tu hogar.</p>
+          <button type="button" onclick="abrirVistaCliente()" class="btn-gold px-5 py-3 rounded-xl text-sm font-semibold">Entrar a la tienda</button>`;
       } else if (tab === 'rental') {
-        box.innerHTML = `<h2 class="text-lg font-bold mb-2">Rental</h2><p class="text-sm text-ink-500 mb-4">Reserva herramientas para tu obra.</p>
-          <button type="button" onclick="abrirVistaRental()" class="btn-gold px-4 py-3 rounded-xl text-sm font-semibold">Ver catálogo rental</button>`;
+        registrarActividadCliente('abrió Rental');
+        box.innerHTML = `<h2 class="text-xl font-bold mb-2">Tools Rental</h2><p class="text-sm text-ink-500 mb-4">Reserva equipos. El pedido llega al equipo FLYHOUSE.</p>
+          <button type="button" onclick="abrirVistaRental()" class="btn-gold px-5 py-3 rounded-xl text-sm font-semibold">Ver catálogo rental</button>`;
       } else if (tab === 'life') {
         const props = (data.propiedadesLife || data.propiedades || []).filter(p => !p.oculto).slice(0, 8);
-        box.innerHTML = `<h2 class="text-lg font-bold mb-3">FLYHOUSE Life</h2>` +
-          (props.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">` + props.map(p => `
+        box.innerHTML = `<h2 class="text-xl font-bold mb-3">FLYHOUSE Life</h2>` +
+          (props.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">` + props.map(pr => `
             <div class="card-premium rounded-2xl overflow-hidden">
-              ${(p.fotos && p.fotos[0]) || p.foto || p.cover ? `<img src="${(p.fotos&&p.fotos[0])||p.foto||p.cover}" class="h-36 w-full object-cover">` : ''}
-              <div class="p-3"><p class="font-bold">${p.titulo||p.nombre||'Propiedad'}</p>
-              <p class="text-xs text-ink-500">${p.distrito||p.lugar||''}</p></div>
+              ${(pr.fotos && pr.fotos[0]) || pr.foto || pr.cover ? `<img src="${(pr.fotos&&pr.fotos[0])||pr.foto||pr.cover}" class="h-40 w-full object-cover">` : ''}
+              <div class="p-3"><p class="font-bold">${pr.titulo||pr.nombre||'Propiedad'}</p>
+              <p class="text-xs text-ink-500">${pr.distrito||pr.lugar||''}</p></div>
             </div>`).join('') + `</div>` : `<p class="text-sm text-ink-500">Pronto verás estadías exclusivas aquí.</p>`);
       } else if (tab === 'chat') {
         if (!data.soporteMensajes) data.soporteMensajes = [];
         const mine = data.soporteMensajes.filter(m => String(m.clienteId) === String(storeCliente && storeCliente.id));
-        box.innerHTML = `<h2 class="text-lg font-bold mb-3">Chat de soporte</h2>
-          <div id="portal-chat-list" class="space-y-2 mb-3 max-h-72 overflow-y-auto">${mine.map(m => `
+        box.innerHTML = `<h2 class="text-xl font-bold mb-1">Asesor comercial</h2>
+          <p class="text-sm text-ink-500 mb-4">Tu consulta llega al equipo master en tiempo real.</p>
+          <div id="portal-chat-list" class="space-y-2 mb-3 max-h-80 overflow-y-auto">${mine.map(m => `
             <div class="rounded-xl px-3 py-2 text-sm ${m.from==='cliente'?'bg-gold-50 ml-8':'bg-white border border-gold-100 mr-8'}">
-              <p class="text-[10px] text-ink-400">${m.from==='cliente'?'Tú':'FLYHOUSE'} · ${(m.fecha||'').slice(11,16)}</p>
+              <p class="text-[10px] text-ink-400">${m.from==='cliente'?'Tú':'FLYHOUSE'}</p>
               <p>${(m.texto||'').replace(/</g,'')}</p>
-            </div>`).join('') || '<p class="text-sm text-ink-400">Escribe tu consulta. El equipo te responde aquí.</p>'}</div>
+            </div>`).join('') || '<p class="text-sm text-ink-400">¿En qué te ayudamos hoy?</p>'}</div>
           <div class="flex gap-2">
-            <input id="portal-chat-input" class="flex-1 px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="Escribe un mensaje…">
+            <input id="portal-chat-input" class="flex-1 px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="Escribe a un asesor…">
             <button type="button" onclick="enviarChatCliente()" class="btn-gold px-4 rounded-xl font-semibold">Enviar</button>
           </div>`;
       } else {
-        const n = presupuestosDelCliente().length;
-        const pres = presupuestosDelCliente();
-        const valor = pres.reduce((s,p)=>s+(Number(p.total)||0),0);
-        const acept = pres.filter(p=>p.estado==='Aceptado').length;
+        const news = [
+          { t:'Miembro exclusivo', d:'Por ser parte de FLYHOUSE tienes descuentos en propuestas activas. Toma acción hoy.' },
+          { t:'Valor de tu propiedad', d:'Cada inversión bien ejecutada suma valor percibido en el mercado.' },
+          { t:'¿Pensando en vender?', d:'También operamos como broker. Si te interesa vender, un asesor te guía.' },
+          { t:'Novedades', d:'Se vienen experiencias Life, rental y store conectados a tu mismo usuario.' }
+        ];
         box.innerHTML = `
-          <div class="rounded-3xl p-6 mb-4 overflow-hidden relative" style="background:linear-gradient(135deg,#0a0a0b,#1c1810)">
-            <p class="text-gold-400 text-[10px] uppercase tracking-[0.25em]">Tu espacio FLYHOUSE</p>
-            <h2 class="text-white text-2xl font-bold mt-1">Tu propiedad, con estándar premium</h2>
-            <p class="text-white/60 text-sm mt-2">Sigue presupuestos, rental y el valor que vamos construyendo en tu espacio.</p>
+          <div class="rounded-3xl p-6 mb-5" style="background:linear-gradient(135deg,#0a0a0b,#1a1610)">
+            <p class="text-gold-400 text-[10px] uppercase tracking-[0.28em]">FLYHOUSE · Estándar premium</p>
+            <h2 class="text-white text-3xl font-bold mt-2 leading-tight">Tu propiedad, con estándar premium</h2>
+            <p class="text-white/60 text-sm mt-2 max-w-xl">Backlog, oportunidades y el valor que construimos juntos. Todo en un solo espacio.</p>
           </div>
-          <div class="grid grid-cols-2 gap-3 mb-4">
-            <button type="button" onclick="setPortalTab('pres')" class="card-premium rounded-2xl p-4 text-left">
-              <p class="text-xs text-ink-500">Propuestas</p>
-              <p class="text-2xl font-bold">${n}</p>
-              <p class="text-[11px] text-ink-400">${acept} aceptada(s)</p>
-            </button>
-            <div class="card-premium rounded-2xl p-4">
-              <p class="text-xs text-ink-500">Valor en pipeline</p>
-              <p class="text-2xl font-bold text-gold-700">S/ ${valor.toLocaleString()}</p>
-              <p class="text-[11px] text-ink-400">Inversión proyectada</p>
-            </div>
+          <div class="overflow-x-auto flex gap-3 mb-5 pb-1">
+            ${news.map(n=>`<div class="flex-shrink-0 w-72 rounded-2xl p-4 bg-ink-900 text-white border border-gold-500/20">
+              <p class="text-gold-400 text-[10px] uppercase tracking-wider">Novedad</p>
+              <p class="font-bold mt-1">${n.t}</p>
+              <p class="text-xs text-white/60 mt-1">${n.d}</p>
+            </div>`).join('')}
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <button type="button" onclick="setPortalTab('rental')" class="card-premium rounded-2xl p-4 text-left">
-              <p class="font-bold text-ink-800">Rental</p>
-              <p class="text-xs text-ink-500 mt-1">Equipos para tu obra</p>
-            </button>
-            <button type="button" onclick="setPortalTab('chat')" class="card-premium rounded-2xl p-4 text-left">
-              <p class="font-bold text-ink-800">Soporte</p>
-              <p class="text-xs text-ink-500 mt-1">Habla con el equipo</p>
-            </button>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="card-premium rounded-2xl p-4"><p class="text-[10px] uppercase text-ink-400">Backlog</p><p class="text-2xl font-bold">${pres.filter(x=>x.estado!=='Aceptado'&&x.estado!=='Rechazado').length}</p><p class="text-[11px] text-ink-400">por decidir</p></div>
+            <div class="card-premium rounded-2xl p-4"><p class="text-[10px] uppercase text-ink-400">Oportunidades</p><p class="text-2xl font-bold text-amber-600">${ofertas.length}</p><p class="text-[11px] text-ink-400">con oferta</p></div>
+            <div class="card-premium rounded-2xl p-4"><p class="text-[10px] uppercase text-ink-400">Valor pipeline</p><p class="text-xl font-bold text-gold-700">S/ ${valor.toLocaleString()}</p></div>
+            <div class="card-premium rounded-2xl p-4 ${ahorro?'ring-2 ring-red-400':''}"><p class="text-[10px] uppercase text-ink-400">Si actúas hoy</p><p class="text-xl font-bold text-red-600">S/ ${ahorro.toLocaleString()}</p><p class="text-[11px] text-ink-400">ahorro estimado</p></div>
           </div>`;
       }
+    }
+    function registrarActividadCliente(accion, extra) {
+      if (!data.crm) data.crm = [];
+      data.crm.unshift({
+        id: 'CRM-' + Date.now(),
+        tipo: 'lead',
+        titulo: (storeCliente && storeCliente.nombre || 'Cliente') + ' · ' + accion,
+        cliente: storeCliente && storeCliente.nombre,
+        clienteId: storeCliente && storeCliente.id,
+        estado: 'Pendiente',
+        fecha: new Date().toISOString().slice(0,10),
+        notas: extra || ''
+      });
+      try { saveSystemData(); } catch(e) {}
     }
     function enviarChatCliente() {
       const inp = document.getElementById('portal-chat-input');
@@ -13195,7 +13295,12 @@ inventario: () => {
             </div>
             <div>
               <label class="form-label">Cliente *</label>
-              <input id="pres-cliente" required class="w-full px-3.5 py-2.5 text-sm border border-gold-200 rounded-xl bg-cream-50">
+              <input id="pres-cliente" required class="w-full px-3.5 py-2.5 text-sm border border-gold-200 rounded-xl bg-cream-50" placeholder="Nombre o busca usuario registrado">
+              <input type="hidden" id="pres-cliente-id">
+              <select id="pres-cliente-user" onchange="onPresClienteUser(this)" class="mt-1.5 w-full px-3 py-2 text-xs border border-gold-200 rounded-xl bg-white">
+                <option value="">— Enviar a usuario de la plataforma (opcional) —</option>
+              </select>
+              <p class="text-[10px] text-ink-400 mt-1">Si elige un usuario, el presupuesto aparece en su portal. Si no, solo se comparte con el link.</p>
             </div>
             <div>
               <label class="form-label">Lugar / distrito</label>
