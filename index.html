@@ -2208,6 +2208,8 @@
             data.storeClientes = mergeById(data.storeClientes, remote.storeClientes);
             data.soporteMensajes = mergeById(data.soporteMensajes, remote.soporteMensajes);
             data.presupuestos = mergeById(data.presupuestos, remote.presupuestos);
+            data.lifePropiedades = mergeById(data.lifePropiedades, remote.lifePropiedades);
+            data.lifeReservas = mergeById(data.lifeReservas, remote.lifeReservas);
           }
         } catch (e) {}
         const payload = buildPersistPayload();
@@ -8709,6 +8711,52 @@ inventario: () => {
           </div></div>`;
       document.body.appendChild(el);
     }
+    async function refrescarNubePortal() {
+      try {
+        if (!supabaseClient && typeof initSupabase==='function') initSupabase();
+        if (typeof cloudPull !== 'function') return;
+        const row = await cloudPull();
+        const remote = row && row.payload && row.payload.data;
+        if (!remote) return;
+        if (remote.lifePropiedades) data.lifePropiedades = mergeById(data.lifePropiedades, remote.lifePropiedades);
+        if (remote.lifeReservas) data.lifeReservas = mergeById(data.lifeReservas, remote.lifeReservas);
+        if (remote.presupuestos) data.presupuestos = mergeById(data.presupuestos, remote.presupuestos);
+      } catch (e) {}
+    }
+
+    function renderPortalMias(box) {
+      if (!box) box = document.getElementById('portal-body');
+      if (!box) return;
+      ensureLifeData();
+      const mias = propiedadesDelCliente();
+      box.innerHTML = `<div class="rounded-3xl p-6 mb-5" style="background:linear-gradient(135deg,#0a0a0b,#1a1610)">
+            <p class="text-gold-400 text-[10px] uppercase tracking-[0.28em]">VIP Life · Exclusividad FLYHOUSE</p>
+            <h2 class="text-white text-2xl font-bold mt-2">Mis propiedades FLYHOUSE</h2>
+            <p class="text-white/60 text-sm mt-2">Las que firmaste con nosotros para gestión. Solo ves métricas; el equipo opera.</p>
+          </div>` +
+          (mias.length ? mias.map(pr => {
+            const k = kpisLifeProp(pr);
+            const bruto = Number(k.ingresos)||0;
+            const pct = Number(pr.comisionPlataforma)||15;
+            const com = bruto*pct/100;
+            const neto = bruto - com - (Number(pr.gastoFijo)||0);
+            const foto = (pr.fotos&&pr.fotos[0])||'';
+            return `<div class="card-premium rounded-2xl overflow-hidden mb-4 flex flex-col sm:flex-row">
+              <div class="sm:w-44 h-40 bg-ink-100 flex-shrink-0">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:''}</div>
+              <div class="p-4 flex-1">
+                <p class="text-[10px] uppercase text-gold-600">Contrato de exclusividad</p>
+                <p class="font-bold text-lg">${pr.titulo||pr.nombre||''}</p>
+                <p class="text-xs text-ink-500">${pr.distrito||''} · ${pr.uso||''}</p>
+                <div class="grid grid-cols-3 gap-2 mt-3 text-center">
+                  <div class="rounded-xl bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">Generado</p><p class="text-sm font-bold text-emerald-700">S/ ${Math.round(bruto).toLocaleString()}</p></div>
+                  <div class="rounded-xl bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">Comisión ${pct}%</p><p class="text-sm font-bold">S/ ${Math.round(com).toLocaleString()}</p></div>
+                  <div class="rounded-xl bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">A depositarte</p><p class="text-sm font-bold text-emerald-700">S/ ${Math.round(neto).toLocaleString()}</p></div>
+                </div>
+                <button type="button" onclick="verDesempenoOwnerLife('${pr.id}')" class="mt-3 text-sm font-semibold text-gold-700">Ver KPIs →</button>
+              </div></div>`;
+          }).join('') : '<p class="text-sm text-ink-500">Aún no hay propiedades de exclusividad ligadas a tu usuario.</p>');
+    }
+
     function setPortalTab(tab) {
       document.querySelectorAll('#client-portal .ptab').forEach(b => {
         const on = b.getAttribute('data-ptab') === tab;
@@ -8717,6 +8765,11 @@ inventario: () => {
       try { actualizarBadgePortal(); } catch(e) {}
       const box = document.getElementById('portal-body');
       if (!box) return;
+      if (tab === 'mias' || tab === 'life' || tab === 'home') {
+        refrescarNubePortal().then(() => {
+          if (tab==='mias') renderPortalMias(box);
+        });
+      }
       const pres = presupuestosDelCliente();
       const valor = pres.reduce((s,p)=>s+(Number(p.total)||0),0);
       const ahorro = pres.reduce((s,p)=>s+Math.max(0,(Number(p.totalOriginal)||0)-(Number(p.total)||0)),0);
@@ -8743,34 +8796,7 @@ inventario: () => {
             </div>`;
           }).join('') : `<p class="col-span-full text-ink-500">Aún no tienes presupuestos en tu bandeja.</p>`) + `</div>`;
       } else if (tab === 'mias') {
-        ensureLifeData();
-        const mias = propiedadesDelCliente();
-        box.innerHTML = `<div class="rounded-3xl p-6 mb-5" style="background:linear-gradient(135deg,#0a0a0b,#1a1610)">
-            <p class="text-gold-400 text-[10px] uppercase tracking-[0.28em]">VIP Life · Exclusividad FLYHOUSE</p>
-            <h2 class="text-white text-2xl font-bold mt-2">Mis propiedades FLYHOUSE</h2>
-            <p class="text-white/60 text-sm mt-2">Las que firmaste con nosotros para gestión. Solo ves métricas; el equipo opera.</p>
-          </div>` +
-          (mias.length ? mias.map(pr => {
-            const k = kpisLifeProp(pr);
-            const bruto = Number(k.ingresos)||0;
-            const pct = Number(pr.comisionPlataforma)||15;
-            const com = bruto*pct/100;
-            const neto = (Number(k.neto)||bruto) - com;
-            const foto = (pr.fotos&&pr.fotos[0])||'';
-            return `<div class="card-premium rounded-2xl overflow-hidden mb-4 flex flex-col sm:flex-row">
-              <div class="sm:w-44 h-40 bg-ink-100 flex-shrink-0">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:''}</div>
-              <div class="p-4 flex-1">
-                <p class="text-[10px] uppercase text-gold-600">Contrato de exclusividad</p>
-                <p class="font-bold text-lg">${pr.titulo||pr.nombre||''}</p>
-                <p class="text-xs text-ink-500">${pr.distrito||''} · ${pr.uso||''}</p>
-                <div class="grid grid-cols-3 gap-2 mt-3 text-center">
-                  <div class="rounded-xl bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">Generado</p><p class="text-sm font-bold">S/ ${Math.round(bruto).toLocaleString()}</p></div>
-                  <div class="rounded-xl bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">Comisión ${pct}%</p><p class="text-sm font-bold">S/ ${Math.round(com).toLocaleString()}</p></div>
-                  <div class="rounded-xl bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">A depositarte</p><p class="text-sm font-bold text-emerald-700">S/ ${Math.round(neto).toLocaleString()}</p></div>
-                </div>
-                <button type="button" onclick="verDesempenoOwnerLife('${pr.id}')" class="mt-3 text-sm font-semibold text-gold-700">Ver KPIs →</button>
-              </div></div>`;
-          }).join('') : '<p class="text-sm text-ink-500">Aún no hay propiedades de exclusividad ligadas a tu usuario. El equipo las asigna desde B&B Life.</p>');
+        renderPortalMias(box);
       } else if (tab === 'store') {
         registrarActividadCliente('abrió Store');
         abrirVistaCliente();
@@ -8828,9 +8854,8 @@ inventario: () => {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">` +
           (props.length ? props.map(pr => {
             const foto = (pr.fotos&&pr.fotos[0])||'';
-            const mia = (cli.id && String(pr.ownerId)===String(cli.id)) ||
-              (cli.email && (pr.ownerEmail||'').toLowerCase()===(cli.email||'').toLowerCase()) ||
-              (cli.nombre && String(pr.ownerNombre||'').toLowerCase()===String(cli.nombre||'').toLowerCase());
+            const mia = propiedadesDelCliente().some(x => String(x.id)===String(pr.id));
+            const gen = mia ? (kpisLifeProp(pr).ingresos||0) : 0;
             return `<div class="card-premium rounded-2xl overflow-hidden">
               <div class="aspect-[4/3] bg-ink-100">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:''}
                 <span class="absolute hidden"></span></div>
@@ -8839,6 +8864,7 @@ inventario: () => {
                 <p class="font-bold">${pr.titulo||pr.nombre||''}</p>
                 <p class="text-xs text-ink-500">${pr.distrito||''}</p>
                 <p class="font-bold text-gold-700 mt-1">S/ ${Number(pr.precioNoche||0).toLocaleString()} / noche</p>
+                ${mia?`<p class="text-xs text-emerald-700 font-semibold mt-1">Generado: S/ ${Math.round(gen).toLocaleString()}</p>`:''}
                 <div class="flex gap-2 mt-2">
                   <button type="button" onclick="verDetalleLifeProp('${pr.id}', true)" class="flex-1 btn-gold py-2 rounded-xl text-xs font-semibold">Reservar</button>
                   ${mia?`<button type="button" onclick="verDesempenoOwnerLife('${pr.id}')" class="flex-1 border border-gold-200 py-2 rounded-xl text-xs font-semibold">Mi desempeño</button>`:''}
