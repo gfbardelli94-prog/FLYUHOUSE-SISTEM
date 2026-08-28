@@ -186,8 +186,134 @@
 </head>
 <body class="bg-cream-100 text-ink-800 antialiased">
 
+
+  <!-- LANDING PÚBLICO CLIENTES -->
+  <div id="landing-screen" class="fixed inset-0 z-[99] overflow-y-auto bg-[#0a0a0b] text-white">
+    <header class="sticky top-0 z-20 backdrop-blur-md bg-black/40 border-b border-white/10">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-full bg-gold-500/20 border border-gold-500/40 flex items-center justify-center text-[10px] font-bold text-gold-400">FH</div>
+          <div>
+            <p class="font-bold tracking-wide text-sm">FLYHOUSE</p>
+            <p class="text-[9px] uppercase tracking-[0.2em] text-white/40">Gestión de propiedades</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="abrirAuthCliente('login')" class="hidden sm:inline-flex px-4 py-2 text-sm rounded-xl border border-white/20 hover:bg-white/5">Ingresar</button>
+          <button type="button" onclick="abrirAuthCliente('reg')" class="px-4 py-2 text-sm font-semibold rounded-xl text-ink-900" style="background:linear-gradient(135deg,#D4AF37,#C9A227)">Crear cuenta</button>
+        </div>
+      </div>
+    </header>
+    <section class="relative min-h-[78vh] flex items-end">
+      <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1800&q=70" class="absolute inset-0 w-full h-full object-cover" alt="">
+      <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/20"></div>
+      <div class="relative max-w-6xl mx-auto px-4 pb-16 pt-28">
+        <p class="text-gold-400 text-[11px] tracking-[0.35em] uppercase mb-3">The Experience</p>
+        <h2 class="text-4xl sm:text-6xl font-bold leading-tight max-w-3xl">Espacios que se viven.<br>Proyectos que se cierran.</h2>
+        <p class="mt-4 text-white/70 max-w-xl text-base sm:text-lg">Renta exclusiva, remodelación premium y un solo lugar para ver tus presupuestos, reservas y el avance de tu propiedad.</p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <button type="button" onclick="abrirAuthCliente('reg')" class="px-6 py-3.5 rounded-xl font-semibold text-ink-900" style="background:linear-gradient(135deg,#D4AF37,#C9A227)">Quiero mi cuenta</button>
+          <button type="button" onclick="abrirAuthCliente('login')" class="px-6 py-3.5 rounded-xl font-semibold border border-white/25 hover:bg-white/10">Ya soy cliente</button>
+        </div>
+      </div>
+    </section>
+    <section class="max-w-6xl mx-auto px-4 py-16 grid sm:grid-cols-3 gap-4">
+      <div class="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+        <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=60" class="h-40 w-full object-cover" alt="">
+        <div class="p-4">
+          <p class="text-gold-400 text-[10px] uppercase tracking-wider">Life</p>
+          <h3 class="font-bold mt-1">Estadías exclusivas</h3>
+          <p class="text-sm text-white/55 mt-1">Propiedades seleccionadas, estilo Airbnb, con estándar FLYHOUSE.</p>
+        </div>
+      </div>
+      <div class="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+        <img src="https://images.unsplash.com/photo-1484154216822-dcc71de9c7ed?auto=format&fit=crop&w=800&q=60" class="h-40 w-full object-cover" alt="">
+        <div class="p-4">
+          <p class="text-gold-400 text-[10px] uppercase tracking-wider">Property Service</p>
+          <h3 class="font-bold mt-1">Remodelación y presupuestos</h3>
+          <p class="text-sm text-white/55 mt-1">Revisa, acepta o consulta cada propuesta que te enviemos.</p>
+        </div>
+      </div>
+      <div class="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+        <img src="https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=800&q=60" class="h-40 w-full object-cover" alt="">
+        <div class="p-4">
+          <p class="text-gold-400 text-[10px] uppercase tracking-wider">Rental</p>
+          <h3 class="font-bold mt-1">Herramientas en obra</h3>
+          <p class="text-sm text-white/55 mt-1">Reserva equipos y sigue el pedido desde tu cuenta.</p>
+        </div>
+      </div>
+    </section>
+    <section class="border-t border-white/10">
+      <div class="max-w-6xl mx-auto px-4 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <p class="text-sm text-white/50">¿Eres parte del equipo FLYHOUSE?</p>
+          <p class="text-white font-semibold">Entra al sistema operativo interno.</p>
+        </div>
+        <button type="button" onclick="abrirLoginEquipo()" class="px-5 py-3 rounded-xl text-sm font-semibold border border-gold-500/50 text-gold-400 hover:bg-gold-500/10">Solo miembros del equipo</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- AUTH CLIENTE LANDING -->
+  <div id="modal-auth-cliente" class="hidden fixed inset-0 z-[110]">
+    <div class="absolute inset-0 bg-black/70" onclick="cerrarAuthCliente()"></div>
+    <div class="absolute inset-0 flex items-end sm:items-center justify-center p-4">
+      <div class="relative bg-white text-ink-800 rounded-2xl w-full max-w-md overflow-hidden border border-gold-200">
+        <div class="px-5 py-4 border-b border-gold-100 flex items-center justify-between">
+          <div>
+            <p class="text-[10px] uppercase tracking-wider text-ink-400">Cuenta cliente</p>
+            <h3 id="auth-cli-title" class="font-bold">Crear cuenta</h3>
+          </div>
+          <button type="button" onclick="cerrarAuthCliente()" class="p-2 rounded-lg hover:bg-gold-50">✕</button>
+        </div>
+        <div class="p-5 space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="btn-tab-reg" onclick="setAuthClienteTab('reg')" class="py-2 rounded-xl text-sm font-semibold btn-gold">Registrarme</button>
+            <button type="button" id="btn-tab-login" onclick="setAuthClienteTab('login')" class="py-2 rounded-xl text-sm font-semibold border border-gold-200">Ingresar</button>
+          </div>
+          <div id="auth-cli-reg" class="space-y-2">
+            <input id="lreg-nombre" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="Nombre completo">
+            <input id="lreg-email" type="email" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="Correo">
+            <input id="lreg-tel" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="WhatsApp">
+            <input id="lreg-pass" type="password" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="Contraseña (mín. 4)">
+            <button type="button" onclick="registrarClienteLanding()" class="w-full btn-gold py-3 rounded-xl text-sm font-semibold">Crear mi cuenta</button>
+          </div>
+          <div id="auth-cli-login" class="hidden space-y-2">
+            <input id="llog-email" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="Correo">
+            <input id="llog-pass" type="password" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="Contraseña">
+            <button type="button" onclick="loginClienteLanding()" class="w-full btn-gold py-3 rounded-xl text-sm font-semibold">Entrar a mi espacio</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTAL CLIENTE -->
+  <div id="client-portal" class="hidden fixed inset-0 z-[95] bg-cream-100 overflow-y-auto">
+    <header class="sticky top-0 z-10 bg-ink-900 text-white border-b border-gold-500/20">
+      <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div>
+          <p class="text-[10px] uppercase tracking-[0.2em] text-gold-400">FLYHOUSE</p>
+          <p class="font-semibold" id="portal-hello">Hola</p>
+        </div>
+        <div class="flex gap-2">
+          <button type="button" onclick="setPortalTab('chat')" class="px-3 py-2 text-xs rounded-xl border border-white/15">Soporte</button>
+          <button type="button" onclick="cerrarPortalCliente()" class="px-3 py-2 text-xs rounded-xl border border-white/15">Salir</button>
+        </div>
+      </div>
+      <div class="max-w-5xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto">
+        <button type="button" onclick="setPortalTab('home')" data-ptab="home" class="ptab px-3 py-1.5 rounded-full text-xs font-semibold bg-gold-500 text-ink-900">Inicio</button>
+        <button type="button" onclick="setPortalTab('pres')" data-ptab="pres" class="ptab px-3 py-1.5 rounded-full text-xs font-semibold bg-white/10">Presupuestos</button>
+        <button type="button" onclick="setPortalTab('rental')" data-ptab="rental" class="ptab px-3 py-1.5 rounded-full text-xs font-semibold bg-white/10">Rental</button>
+        <button type="button" onclick="setPortalTab('life')" data-ptab="life" class="ptab px-3 py-1.5 rounded-full text-xs font-semibold bg-white/10">Life</button>
+        <button type="button" onclick="setPortalTab('chat')" data-ptab="chat" class="ptab px-3 py-1.5 rounded-full text-xs font-semibold bg-white/10">Chat</button>
+      </div>
+    </header>
+    <main id="portal-body" class="max-w-5xl mx-auto px-4 py-6"></main>
+  </div>
+
   <!-- LOGIN CINEMATOGRÁFICO -->
-  <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden">
+  <div id="login-screen" class="fixed inset-0 z-[100] hidden flex items-center justify-center overflow-hidden">
     <div class="absolute inset-0 opacity-20" style="background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 0h40v40H0z' fill='none' stroke='%23D4AF37' stroke-opacity='0.08'/%3E%3C/svg%3E&quot;);"></div>
     <div class="relative z-10 w-full max-w-md mx-4 text-center">
       <div class="flex justify-center mb-8">
@@ -210,6 +336,7 @@
         </select>
         <button type="button" onclick="continuarLoginUsuario()" class="w-full btn-gold py-3 rounded-xl text-sm font-semibold">Continuar</button>
         <p class="text-ink-500 text-xs">Elige tu usuario y continúa</p>
+        <button type="button" onclick="volverLandingPublico()" class="text-xs text-ink-500 hover:text-gold-400">← Inicio público</button>
       </div>
 
       <div id="login-step-auth" class="hidden space-y-4">
@@ -230,6 +357,7 @@
           <button onclick="loginWithPin()" class="px-5 py-3 bg-ink-700 hover:bg-ink-600 text-white rounded-xl text-sm font-medium border border-ink-600">Entrar</button>
         </div>
         <button onclick="backToUserSelect()" class="text-xs text-ink-500 hover:text-gold-400">← Cambiar usuario</button>
+        <button onclick="volverLandingPublico()" class="block w-full text-xs text-ink-500 hover:text-gold-400 mt-2">← Volver al inicio público</button>
       </div>
 
       <div id="login-step-success" class="hidden">
@@ -3233,6 +3361,14 @@
             <p class="text-lg font-bold text-ink-800 mt-1">${motiv}</p>
             <p class="text-xs text-ink-500 mt-1">+10 pts por cada contrato culminado · competencia sana del equipo</p>
           </div>
+          ${esMasterReal ? `<div class="card-premium rounded-2xl p-4 border border-gold-200 flex flex-wrap items-center justify-between gap-3 cursor-pointer" onclick="navigate('suscriptores')">
+            <div>
+              <p class="text-[10px] uppercase tracking-wider text-gold-700 font-bold">Clientes en la plataforma</p>
+              <p class="text-3xl font-bold text-ink-900">${(data.storeClientes||[]).length}</p>
+              <p class="text-xs text-ink-500">Nuevos hoy: ${(data.storeClientes||[]).filter(c => (c.creado||'')===new Date().toISOString().slice(0,10)).length} · clic para ver lista</p>
+            </div>
+            <span class="text-sm font-semibold text-gold-700">Ver usuarios →</span>
+          </div>` : ''}
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <div class="card-premium rounded-2xl p-5 border-l-4 border-emerald-500">
               <p class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Facturado culminado</p>
@@ -5738,9 +5874,7 @@ inventario: () => {
       suscriptores() {
         if (!puedeVerTodo()) return [];
         const hoy = new Date().toISOString().slice(0, 10);
-        return (data.storeClientes || []).filter(c =>
-          !_fueVisto('suscriptores', c.id) && ((c.creado || '') === hoy || !c.creado)
-        ).map(c => c.id);
+        return (data.storeClientes || []).filter(c => !_fueVisto('suscriptores', c.id)).map(c => c.id);
       },
       presupuestos() {
         if (!puedeVerTodo()) return [];
@@ -8026,6 +8160,202 @@ inventario: () => {
         }
       }
     }
+    function hideAllEntryScreens() {
+      ['landing-screen','login-screen','client-portal','app-shell'].forEach(id => {
+        document.getElementById(id)?.classList.add('hidden');
+      });
+    }
+    function abrirLoginEquipo() {
+      document.getElementById('landing-screen')?.classList.add('hidden');
+      document.getElementById('client-portal')?.classList.add('hidden');
+      document.getElementById('app-shell')?.classList.add('hidden');
+      const login = document.getElementById('login-screen');
+      login.classList.remove('hidden');
+      login.classList.add('flex');
+      try { renderLoginUsers(); lucide.createIcons(); } catch(e) {}
+    }
+    function volverLandingPublico() {
+      sessionStorage.removeItem('fh_logged');
+      hideAllEntryScreens();
+      document.getElementById('landing-screen')?.classList.remove('hidden');
+    }
+    function abrirAuthCliente(tab) {
+      setAuthClienteTab(tab || 'reg');
+      document.getElementById('modal-auth-cliente')?.classList.remove('hidden');
+    }
+    function cerrarAuthCliente() {
+      document.getElementById('modal-auth-cliente')?.classList.add('hidden');
+    }
+    function setAuthClienteTab(tab) {
+      document.getElementById('auth-cli-reg')?.classList.toggle('hidden', tab !== 'reg');
+      document.getElementById('auth-cli-login')?.classList.toggle('hidden', tab !== 'login');
+      const t = document.getElementById('auth-cli-title');
+      if (t) t.textContent = tab === 'login' ? 'Ingresar' : 'Crear cuenta';
+      const a = document.getElementById('btn-tab-reg');
+      const b = document.getElementById('btn-tab-login');
+      if (a) a.className = tab==='reg' ? 'py-2 rounded-xl text-sm font-semibold btn-gold' : 'py-2 rounded-xl text-sm font-semibold border border-gold-200';
+      if (b) b.className = tab==='login' ? 'py-2 rounded-xl text-sm font-semibold btn-gold' : 'py-2 rounded-xl text-sm font-semibold border border-gold-200';
+    }
+    function registrarClienteLanding() {
+      ensureStoreClientes();
+      const nombre = (document.getElementById('lreg-nombre')?.value || '').trim();
+      const email = (document.getElementById('lreg-email')?.value || '').trim().toLowerCase();
+      const tel = (document.getElementById('lreg-tel')?.value || '').trim();
+      const pass = document.getElementById('lreg-pass')?.value || '';
+      if (!nombre || !email || pass.length < 4) { mostrarToast('Completa nombre, correo y contraseña'); return; }
+      if (data.storeClientes.some(c => c.email === email)) { mostrarToast('Ese correo ya existe · ingresa'); setAuthClienteTab('login'); return; }
+      const cli = {
+        id: 'SC-' + Date.now().toString(36),
+        nombre, email, tel, pass,
+        puntos: 0, dniValidado: false,
+        creado: new Date().toISOString().slice(0,10)
+      };
+      data.storeClientes.push(cli);
+      saveSystemData();
+      entrarPortalCliente(cli);
+    }
+    function loginClienteLanding() {
+      ensureStoreClientes();
+      const email = (document.getElementById('llog-email')?.value || '').trim().toLowerCase();
+      const pass = document.getElementById('llog-pass')?.value || '';
+      const cli = data.storeClientes.find(c => c.email === email && c.pass === pass);
+      if (!cli) { mostrarToast('Correo o contraseña incorrectos'); return; }
+      entrarPortalCliente(cli);
+    }
+    function entrarPortalCliente(cli) {
+      storeCliente = { id: cli.id, nombre: cli.nombre, email: cli.email, puntos: cli.puntos || 0 };
+      try { saveStoreClienteSession(); } catch(e) {}
+      sessionStorage.setItem('fh_client_logged', '1');
+      sessionStorage.setItem('fh_client_id', String(cli.id));
+      cerrarAuthCliente();
+      hideAllEntryScreens();
+      document.getElementById('client-portal')?.classList.remove('hidden');
+      const h = document.getElementById('portal-hello');
+      if (h) h.textContent = 'Hola, ' + (cli.nombre || '').split(' ')[0];
+      setPortalTab('home');
+    }
+    function cerrarPortalCliente() {
+      sessionStorage.removeItem('fh_client_logged');
+      sessionStorage.removeItem('fh_client_id');
+      storeCliente = null;
+      try { saveStoreClienteSession(); } catch(e) {}
+      hideAllEntryScreens();
+      document.getElementById('landing-screen')?.classList.remove('hidden');
+    }
+    function presupuestosDelCliente() {
+      const cli = storeCliente || {};
+      const nom = (cli.nombre || '').toLowerCase();
+      const em = (cli.email || '').toLowerCase();
+      return (data.presupuestos || []).filter(p => {
+        if (p.oculto) return false;
+        const c = (p.cliente || '').toLowerCase();
+        const e = (p.clienteEmail || '').toLowerCase();
+        if (p.clienteId && String(p.clienteId) === String(cli.id)) return true;
+        if (em && e && e === em) return true;
+        if (nom && c && (c.includes(nom) || nom.includes(c))) return true;
+        return false;
+      });
+    }
+    function setPortalTab(tab) {
+      document.querySelectorAll('.ptab').forEach(b => {
+        const on = b.getAttribute('data-ptab') === tab;
+        b.className = 'ptab px-3 py-1.5 rounded-full text-xs font-semibold ' + (on ? 'bg-gold-500 text-ink-900' : 'bg-white/10 text-white');
+      });
+      const box = document.getElementById('portal-body');
+      if (!box) return;
+      if (tab === 'pres') {
+        const lista = presupuestosDelCliente();
+        box.innerHTML = `<h2 class="text-lg font-bold text-ink-800 mb-3">Tus presupuestos</h2>` +
+          (lista.length ? lista.map(p => `
+            <div class="card-premium rounded-2xl p-4 mb-3 flex gap-3">
+              ${p.fotoDespues || p.fotoAntes ? `<img src="${p.fotoDespues||p.fotoAntes}" class="w-20 h-20 rounded-xl object-cover">` : ''}
+              <div class="flex-1">
+                <p class="font-bold text-ink-800">${p.titulo||''}</p>
+                <p class="text-xs text-ink-500">${p.lugar||''} · ${p.estado||''}</p>
+                <p class="text-gold-700 font-bold mt-1">S/ ${Number(p.total||0).toLocaleString()}</p>
+                <button type="button" onclick="abrirVistaClientePresupuesto('${String(p.id).replace(/'/g,"\\'")}')" class="mt-2 text-sm font-semibold text-gold-700">Ver propuesta</button>
+              </div>
+            </div>`).join('') : `<p class="text-ink-500 text-sm">Aún no tienes presupuestos asignados.</p>`);
+      } else if (tab === 'rental') {
+        box.innerHTML = `<h2 class="text-lg font-bold mb-2">Rental</h2><p class="text-sm text-ink-500 mb-4">Reserva herramientas para tu obra.</p>
+          <button type="button" onclick="abrirVistaRental()" class="btn-gold px-4 py-3 rounded-xl text-sm font-semibold">Ver catálogo rental</button>`;
+      } else if (tab === 'life') {
+        const props = (data.propiedadesLife || data.propiedades || []).filter(p => !p.oculto).slice(0, 8);
+        box.innerHTML = `<h2 class="text-lg font-bold mb-3">FLYHOUSE Life</h2>` +
+          (props.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">` + props.map(p => `
+            <div class="card-premium rounded-2xl overflow-hidden">
+              ${(p.fotos && p.fotos[0]) || p.foto || p.cover ? `<img src="${(p.fotos&&p.fotos[0])||p.foto||p.cover}" class="h-36 w-full object-cover">` : ''}
+              <div class="p-3"><p class="font-bold">${p.titulo||p.nombre||'Propiedad'}</p>
+              <p class="text-xs text-ink-500">${p.distrito||p.lugar||''}</p></div>
+            </div>`).join('') + `</div>` : `<p class="text-sm text-ink-500">Pronto verás estadías exclusivas aquí.</p>`);
+      } else if (tab === 'chat') {
+        if (!data.soporteMensajes) data.soporteMensajes = [];
+        const mine = data.soporteMensajes.filter(m => String(m.clienteId) === String(storeCliente && storeCliente.id));
+        box.innerHTML = `<h2 class="text-lg font-bold mb-3">Chat de soporte</h2>
+          <div id="portal-chat-list" class="space-y-2 mb-3 max-h-72 overflow-y-auto">${mine.map(m => `
+            <div class="rounded-xl px-3 py-2 text-sm ${m.from==='cliente'?'bg-gold-50 ml-8':'bg-white border border-gold-100 mr-8'}">
+              <p class="text-[10px] text-ink-400">${m.from==='cliente'?'Tú':'FLYHOUSE'} · ${(m.fecha||'').slice(11,16)}</p>
+              <p>${(m.texto||'').replace(/</g,'')}</p>
+            </div>`).join('') || '<p class="text-sm text-ink-400">Escribe tu consulta. El equipo te responde aquí.</p>'}</div>
+          <div class="flex gap-2">
+            <input id="portal-chat-input" class="flex-1 px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="Escribe un mensaje…">
+            <button type="button" onclick="enviarChatCliente()" class="btn-gold px-4 rounded-xl font-semibold">Enviar</button>
+          </div>`;
+      } else {
+        const n = presupuestosDelCliente().length;
+        const pres = presupuestosDelCliente();
+        const valor = pres.reduce((s,p)=>s+(Number(p.total)||0),0);
+        const acept = pres.filter(p=>p.estado==='Aceptado').length;
+        box.innerHTML = `
+          <div class="rounded-3xl p-6 mb-4 overflow-hidden relative" style="background:linear-gradient(135deg,#0a0a0b,#1c1810)">
+            <p class="text-gold-400 text-[10px] uppercase tracking-[0.25em]">Tu espacio FLYHOUSE</p>
+            <h2 class="text-white text-2xl font-bold mt-1">Tu propiedad, con estándar premium</h2>
+            <p class="text-white/60 text-sm mt-2">Sigue presupuestos, rental y el valor que vamos construyendo en tu espacio.</p>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <button type="button" onclick="setPortalTab('pres')" class="card-premium rounded-2xl p-4 text-left">
+              <p class="text-xs text-ink-500">Propuestas</p>
+              <p class="text-2xl font-bold">${n}</p>
+              <p class="text-[11px] text-ink-400">${acept} aceptada(s)</p>
+            </button>
+            <div class="card-premium rounded-2xl p-4">
+              <p class="text-xs text-ink-500">Valor en pipeline</p>
+              <p class="text-2xl font-bold text-gold-700">S/ ${valor.toLocaleString()}</p>
+              <p class="text-[11px] text-ink-400">Inversión proyectada</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <button type="button" onclick="setPortalTab('rental')" class="card-premium rounded-2xl p-4 text-left">
+              <p class="font-bold text-ink-800">Rental</p>
+              <p class="text-xs text-ink-500 mt-1">Equipos para tu obra</p>
+            </button>
+            <button type="button" onclick="setPortalTab('chat')" class="card-premium rounded-2xl p-4 text-left">
+              <p class="font-bold text-ink-800">Soporte</p>
+              <p class="text-xs text-ink-500 mt-1">Habla con el equipo</p>
+            </button>
+          </div>`;
+      }
+    }
+    function enviarChatCliente() {
+      const inp = document.getElementById('portal-chat-input');
+      const texto = (inp && inp.value || '').trim();
+      if (!texto || !storeCliente) return;
+      if (!data.soporteMensajes) data.soporteMensajes = [];
+      data.soporteMensajes.push({
+        id: 'MSG-' + Date.now(),
+        clienteId: storeCliente.id,
+        clienteNombre: storeCliente.nombre,
+        from: 'cliente',
+        texto,
+        fecha: new Date().toISOString(),
+        leidoEquipo: false
+      });
+      saveSystemData();
+      inp.value = '';
+      setPortalTab('chat');
+      mostrarToast('Mensaje enviado al equipo');
+    }
+
     function cinematicEnter() {
       document.getElementById('login-step-auth').classList.add('hidden');
       document.getElementById('login-step-success').classList.remove('hidden');
@@ -8035,6 +8365,8 @@ inventario: () => {
       sessionStorage.setItem('fh_logged', '1');
       if (currentUser) sessionStorage.setItem('fh_user_id', String(currentUser.id));
       setTimeout(() => {
+        document.getElementById('landing-screen')?.classList.add('hidden');
+        document.getElementById('client-portal')?.classList.add('hidden');
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-shell').classList.remove('hidden');
         updateSidebarUser();
@@ -8049,7 +8381,8 @@ inventario: () => {
       currentUser = null;
       document.getElementById('user-menu').classList.add('hidden');
       document.getElementById('app-shell').classList.add('hidden');
-      document.getElementById('login-screen').classList.remove('hidden');
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('landing-screen')?.classList.remove('hidden');
       document.getElementById('login-step-success').classList.add('hidden');
       document.getElementById('login-step-auth').classList.add('hidden');
       document.getElementById('login-step-user').classList.remove('hidden');
@@ -12758,21 +13091,31 @@ inventario: () => {
         document.getElementById('login-screen')?.classList.add('hidden');
         document.getElementById('app-shell')?.classList.add('hidden');
       } catch (e) {}
+    } else if (sessionStorage.getItem('fh_client_logged') === '1') {
+      try { ensureStoreClientes(); } catch(e) {}
+      const cid = sessionStorage.getItem('fh_client_id');
+      const cli = (data.storeClientes || []).find(c => String(c.id) === String(cid));
+      if (cli && typeof entrarPortalCliente === 'function') entrarPortalCliente(cli);
+      else {
+        document.getElementById('landing-screen')?.classList.remove('hidden');
+        document.getElementById('login-screen')?.classList.add('hidden');
+        document.getElementById('app-shell')?.classList.add('hidden');
+      }
     } else {
       const savedUid = sessionStorage.getItem('fh_user_id');
       if (savedUid) currentUser = (data.usuarios || []).find(u => String(u.id) === savedUid) || null;
       if (sessionStorage.getItem('fh_logged') === '1') {
+        document.getElementById('landing-screen')?.classList.add('hidden');
+        document.getElementById('client-portal')?.classList.add('hidden');
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-shell').classList.remove('hidden');
         updateSidebarUser();
         navigate('dashboard');
         try { actualizarBadgesSidebar(); } catch(e) {}
-        if (dataLoaded) setTimeout(() => mostrarToast('Data restaurada de este navegador'), 800);
       } else {
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('app-shell').classList.add('hidden');
-        renderLoginUsers();
-        lucide.createIcons();
+        document.getElementById('landing-screen')?.classList.remove('hidden');
+        document.getElementById('login-screen')?.classList.add('hidden');
+        document.getElementById('app-shell')?.classList.add('hidden');
       }
     }
   </script>
