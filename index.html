@@ -302,7 +302,7 @@
           <button type="button" onclick="setPortalTab('pres')" data-ptab="pres" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center justify-between gap-2">Presupuestos <span id="badge-portal-pres" class="nav-badge hidden">0</span></button>
           <button type="button" onclick="setPortalTab('store')" data-ptab="store" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Store</button>
           <button type="button" onclick="setPortalTab('rental')" data-ptab="rental" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Rental</button>
-          <button type="button" onclick="setPortalTab('life')" data-ptab="life" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Life</button>
+          <button type="button" onclick="setPortalTab('life')" data-ptab="life" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">B&amp;B Life</button>
           <button type="button" onclick="setPortalTab('chat')" data-ptab="chat" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Asesor</button>
         </nav>
         <div class="p-3 border-t border-ink-700">
@@ -1487,7 +1487,7 @@
   </div>
 
   <!-- Vista cliente catálogo -->
-  <div id="vista-cliente" class="fixed inset-0 z-[90] hidden overflow-y-auto" style="background:linear-gradient(180deg,#0a0a0b 0%,#141416 30%,#f7f5f0 30%);">
+  <div id="vista-cliente" class="fixed inset-0 z-[120] hidden overflow-y-auto" style="background:linear-gradient(180deg,#0a0a0b 0%,#141416 30%,#f7f5f0 30%);">
     <!-- Top bar cliente -->
     <div class="sticky top-0 z-20 backdrop-blur-md border-b border-gold-500/20" style="background:rgba(10,10,11,0.92)">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
@@ -1669,7 +1669,7 @@
   </div>
 
   <!-- Vista pública FLYHOUSE Rental (cliente / socio) -->
-  <div id="vista-rental" class="fixed inset-0 z-[90] hidden overflow-y-auto" style="background:linear-gradient(180deg,#0a0a0b 0%,#141416 28%,#f7f5f0 28%);">
+  <div id="vista-rental" class="fixed inset-0 z-[120] hidden overflow-y-auto" style="background:linear-gradient(180deg,#0a0a0b 0%,#141416 28%,#f7f5f0 28%);">
     <div class="sticky top-0 z-20 backdrop-blur-md border-b border-gold-500/20" style="background:rgba(10,10,11,0.92)">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
         <div class="flex items-center gap-3">
@@ -8560,6 +8560,36 @@ inventario: () => {
       if (n > 0) { el.textContent = n; el.classList.remove('hidden'); }
       else el.classList.add('hidden');
     }
+    function verDesempenoOwnerLife(id) {
+      ensureLifeData();
+      const p = (data.lifePropiedades||[]).find(x => String(x.id)===String(id));
+      if (!p) return;
+      const res = (data.lifeReservas||[]).filter(r => String(r.propiedadId)===String(p.id));
+      const bruto = res.reduce((s,r)=>s+(Number(r.total)||0),0);
+      const comisionPct = Number(p.comisionPlataforma)!=null && p.comisionPlataforma!=='' ? Number(p.comisionPlataforma) : 15;
+      const comision = bruto * comisionPct / 100;
+      const fijo = Number(p.gastoFijo)||0;
+      const netoOwner = bruto - comision - fijo;
+      const meta = Number(p.metaMensual)||0;
+      const el = document.createElement('div');
+      el.id = 'modal-owner-life';
+      el.className = 'fixed inset-0 z-[130]';
+      el.innerHTML = `<div class="absolute inset-0 bg-ink-900/55" onclick="this.parentElement.remove()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl w-full max-w-md p-5 border border-gold-200 space-y-3">
+            <p class="text-[10px] uppercase tracking-wider text-gold-600">Tu propiedad · solo lectura</p>
+            <h3 class="font-bold text-lg">${p.titulo||p.nombre||''}</h3>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] text-ink-400">Facturado</p><p class="font-bold">S/ ${Math.round(bruto).toLocaleString()}</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] text-ink-400">Comisión ${comisionPct}%</p><p class="font-bold">S/ ${Math.round(comision).toLocaleString()}</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] text-ink-400">Gastos fijos</p><p class="font-bold">S/ ${Math.round(fijo).toLocaleString()}</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] text-ink-400">A depositarte</p><p class="font-bold text-emerald-700">S/ ${Math.round(netoOwner).toLocaleString()}</p></div>
+            </div>
+            <p class="text-xs text-ink-500">Meta mensual: S/ ${Math.round(meta).toLocaleString()} · avance ${meta?Math.min(100,Math.round(bruto/meta*100)):0}%</p>
+            <button type="button" onclick="this.closest('#modal-owner-life').remove()" class="w-full border border-gold-200 py-2.5 rounded-xl text-sm">Cerrar</button>
+          </div></div>`;
+      document.body.appendChild(el);
+    }
     function setPortalTab(tab) {
       document.querySelectorAll('#client-portal .ptab').forEach(b => {
         const on = b.getAttribute('data-ptab') === tab;
@@ -8595,21 +8625,71 @@ inventario: () => {
           }).join('') : `<p class="col-span-full text-ink-500">Aún no tienes presupuestos en tu bandeja.</p>`) + `</div>`;
       } else if (tab === 'store') {
         registrarActividadCliente('abrió Store');
-        box.innerHTML = `<h2 class="text-xl font-bold mb-2">FLYHOUSE Store</h2><p class="text-sm text-ink-500 mb-4">Decoración, materiales e implementación para tu hogar.</p>
-          <button type="button" onclick="abrirVistaCliente()" class="btn-gold px-5 py-3 rounded-xl text-sm font-semibold">Entrar a la tienda</button>`;
+        const prods = (data.productos||[]).filter(p => !p.oculto);
+        const nCart = (typeof carritoCliente!=='undefined' && carritoCliente) ? carritoCliente.reduce((s,i)=>s+(i.qty||1),0) : 0;
+        box.innerHTML = `<div class="flex items-end justify-between gap-3 mb-4">
+            <div><h2 class="text-xl font-bold">FLYHOUSE Store</h2><p class="text-sm text-ink-500">Todo el catálogo para tu hogar</p></div>
+            <button type="button" onclick="abrirVistaCliente()" class="text-sm font-semibold border border-gold-200 px-3 py-2 rounded-xl">Carrito (${nCart})</button>
+          </div>
+          <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">` +
+          (prods.length ? prods.map(pr => {
+            const foto = (pr.fotos&&pr.fotos[0]) || pr.foto || '';
+            const mon = pr.moneda || 'PEN';
+            const final = (typeof calcPrecioFinal==='function') ? calcPrecioFinal(pr.precio, pr.descTipo||'ninguno', pr.descuento||0) : pr.precio;
+            const oferta = Number(pr.totalOriginal||pr.precio||0) > Number(final) || pr.oferta;
+            return `<div class="card-premium rounded-2xl overflow-hidden ${oferta?'ring-2 ring-red-500':''}">
+              <div class="aspect-square bg-ink-100">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:''}</div>
+              <div class="p-3">
+                <p class="text-xs font-bold line-clamp-2">${pr.nombre||''}</p>
+                <p class="text-sm font-bold text-gold-700 mt-1">${typeof formatMoney==='function'?formatMoney(final,mon):('S/ '+Number(final||0).toLocaleString())}</p>
+                <button type="button" onclick="addToCart(${JSON.stringify(pr.id)});mostrarToast('Agregado al carrito');setPortalTab('store')" class="mt-2 w-full py-2 text-xs font-semibold btn-gold rounded-xl">Al carrito</button>
+              </div></div>`;
+          }).join('') : '<p class="col-span-full text-ink-500">Aún no hay productos publicados.</p>') + `</div>`;
       } else if (tab === 'rental') {
         registrarActividadCliente('abrió Rental');
-        box.innerHTML = `<h2 class="text-xl font-bold mb-2">Tools Rental</h2><p class="text-sm text-ink-500 mb-4">Reserva equipos. El pedido llega al equipo FLYHOUSE.</p>
-          <button type="button" onclick="abrirVistaRental()" class="btn-gold px-5 py-3 rounded-xl text-sm font-semibold">Ver catálogo rental</button>`;
+        const lista = (typeof listaRentalPublica==='function') ? listaRentalPublica() : (data.inventario||[]).filter(i=>i.rental && !i.oculto);
+        box.innerHTML = `<div class="flex items-end justify-between gap-3 mb-4">
+            <div><h2 class="text-xl font-bold">Tools Rental</h2><p class="text-sm text-ink-500">Almacenes FLYHOUSE · reserva herramientas</p></div>
+            <button type="button" onclick="abrirVistaRental()" class="text-sm font-semibold border border-gold-200 px-3 py-2 rounded-xl">Vista completa</button>
+          </div>
+          <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">` +
+          (lista.length ? lista.map(it => {
+            const foto = (it.fotos&&it.fotos[0]) || it.foto || '';
+            const pl = it.rentalPlazo==='hora'?'hora':it.rentalPlazo==='semana'?'semana':it.rentalPlazo==='mes'?'mes':'día';
+            return `<div class="card-premium rounded-2xl overflow-hidden">
+              <div class="aspect-square bg-ink-100">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:''}</div>
+              <div class="p-3">
+                <p class="text-xs font-bold line-clamp-2">${it.nombre||''}</p>
+                <p class="text-sm font-bold text-gold-700 mt-1">S/ ${Number(it.rentalPrecio||0).toLocaleString()} / ${pl}</p>
+                <button type="button" onclick="addRentalCart('${String(it.id).replace(/'/g,"\'")}');mostrarToast('Agregado a reserva')" class="mt-2 w-full py-2 text-xs font-semibold btn-gold rounded-xl">Reservar</button>
+              </div></div>`;
+          }).join('') : '<p class="col-span-full text-ink-500">No hay herramientas en rental publicadas.</p>') + `</div>`;
       } else if (tab === 'life') {
-        const props = (data.propiedadesLife || data.propiedades || []).filter(p => !p.oculto).slice(0, 8);
-        box.innerHTML = `<h2 class="text-xl font-bold mb-3">FLYHOUSE Life</h2>` +
-          (props.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">` + props.map(pr => `
-            <div class="card-premium rounded-2xl overflow-hidden">
-              ${(pr.fotos && pr.fotos[0]) || pr.foto || pr.cover ? `<img src="${(pr.fotos&&pr.fotos[0])||pr.foto||pr.cover}" class="h-40 w-full object-cover">` : ''}
-              <div class="p-3"><p class="font-bold">${pr.titulo||pr.nombre||'Propiedad'}</p>
-              <p class="text-xs text-ink-500">${pr.distrito||pr.lugar||''}</p></div>
-            </div>`).join('') + `</div>` : `<p class="text-sm text-ink-500">Pronto verás estadías exclusivas aquí.</p>`);
+        ensureLifeData();
+        const props = (data.lifePropiedades||[]).filter(p => !p.oculto && p.publicado !== false);
+        const cli = storeCliente || {};
+        box.innerHTML = `<h2 class="text-xl font-bold">FLYHOUSE B&amp;B Life</h2>
+          <p class="text-sm text-ink-500 mb-4">Propiedades exclusivas que gestionamos. Reserva noches o mira el desempeño si es tuya.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">` +
+          (props.length ? props.map(pr => {
+            const foto = (pr.fotos&&pr.fotos[0])||'';
+            const mia = (cli.id && String(pr.ownerId)===String(cli.id)) ||
+              (cli.email && (pr.ownerEmail||'').toLowerCase()===(cli.email||'').toLowerCase()) ||
+              (cli.nombre && String(pr.ownerNombre||'').toLowerCase()===String(cli.nombre||'').toLowerCase());
+            return `<div class="card-premium rounded-2xl overflow-hidden">
+              <div class="aspect-[4/3] bg-ink-100">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:''}
+                <span class="absolute hidden"></span></div>
+              <div class="p-3">
+                <p class="text-[10px] uppercase text-gold-600">${pr.uso||'vivienda'} · ${pr.plazo||'corta'}</p>
+                <p class="font-bold">${pr.titulo||pr.nombre||''}</p>
+                <p class="text-xs text-ink-500">${pr.distrito||''}</p>
+                <p class="font-bold text-gold-700 mt-1">S/ ${Number(pr.precioNoche||0).toLocaleString()} / noche</p>
+                <div class="flex gap-2 mt-2">
+                  <button type="button" onclick="verDetalleLifeProp('${pr.id}', true)" class="flex-1 btn-gold py-2 rounded-xl text-xs font-semibold">Reservar</button>
+                  ${mia?`<button type="button" onclick="verDesempenoOwnerLife('${pr.id}')" class="flex-1 border border-gold-200 py-2 rounded-xl text-xs font-semibold">Mi desempeño</button>`:''}
+                </div>
+              </div></div>`;
+          }).join('') : '<p class="col-span-full text-ink-500">Aún no hay propiedades exclusivas publicadas.</p>') + `</div>`;
       } else if (tab === 'chat') {
         if (!data.soporteMensajes) data.soporteMensajes = [];
         const mine = data.soporteMensajes.filter(m => String(m.clienteId) === String(storeCliente && storeCliente.id));
