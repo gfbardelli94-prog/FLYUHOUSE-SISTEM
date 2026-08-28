@@ -303,6 +303,7 @@
           <button type="button" onclick="setPortalTab('store')" data-ptab="store" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Store</button>
           <button type="button" onclick="setPortalTab('rental')" data-ptab="rental" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Rental</button>
           <button type="button" onclick="setPortalTab('life')" data-ptab="life" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">B&amp;B Life</button>
+          <button type="button" onclick="setPortalTab('mias')" data-ptab="mias" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Mis propiedades</button>
           <button type="button" onclick="setPortalTab('chat')" data-ptab="chat" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Asesor</button>
         </nav>
         <div class="p-3 border-t border-ink-700">
@@ -1507,7 +1508,7 @@
             <span id="cart-badge" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
           </button>
           <button onclick="cerrarVistaCliente()" class="px-3.5 py-2 text-sm font-medium text-white bg-ink-700 hover:bg-ink-600 border border-ink-500 rounded-xl flex items-center gap-1.5">
-            <i data-lucide="log-out" class="w-4 h-4"></i> Salir
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Mi espacio
           </button>
         </div>
       </div>
@@ -1686,7 +1687,7 @@
             <span id="rental-cart-badge" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
           </button>
           <button type="button" onclick="cerrarVistaRental()" class="px-3.5 py-2 text-sm font-medium text-white bg-ink-700 hover:bg-ink-600 border border-ink-500 rounded-xl flex items-center gap-1.5">
-            <i data-lucide="log-out" class="w-4 h-4"></i> Salir
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Mi espacio
           </button>
         </div>
       </div>
@@ -5398,6 +5399,11 @@ inventario: () => {
       sel.innerHTML = '<option value="">— Buscar suscriptor / propietario —</option>' +
         users.map(c => `<option value="${c.id}">${c.nombre||''} · ${c.email||''}</option>`).join('');
     }
+    function onLifeOwnerChange(sel) {
+      const c = (data.storeClientes||[]).find(x => String(x.id)===String(sel.value));
+      const nom = document.getElementById('life-owner-nombre');
+      if (c && nom) nom.value = c.nombre || '';
+    }
     function onLifeContrato(input) {
       const f = input.files && input.files[0];
       if (!f) return;
@@ -5536,6 +5542,7 @@ inventario: () => {
         metaMensual: parseFloat(document.getElementById('life-meta')?.value)||0,
         ownerId: document.getElementById('life-owner')?.value || '',
         ownerNombre: document.getElementById('life-owner-nombre')?.value.trim() || '',
+        ownerEmail: (function(){ const id=document.getElementById('life-owner')?.value; const c=(data.storeClientes||[]).find(x=>String(x.id)===String(id)); return c? (c.email||'') : ''; })(),
         contratoNombre: document.getElementById('life-contrato-nom')?.textContent || '',
         contratoData: window._lifeContratoData || null,
         fotos: (function(){ const arr = lifeFotosTemp.slice(); const ci = window._lifeCoverIdx||0; if (ci>0 && ci<arr.length){ const [c]=arr.splice(ci,1); arr.unshift(c);} return arr; })()
@@ -8560,6 +8567,24 @@ inventario: () => {
       if (n > 0) { el.textContent = n; el.classList.remove('hidden'); }
       else el.classList.add('hidden');
     }
+    function propiedadesDelCliente() {
+      const cli = storeCliente || {};
+      const nom = normNombre(cli.nombre);
+      const em = (cli.email||'').toLowerCase().trim();
+      return (data.lifePropiedades||[]).filter(p => {
+        if (p.oculto) return false;
+        if (cli.id && p.ownerId && String(p.ownerId)===String(cli.id)) return true;
+        if (em && (p.ownerEmail||'').toLowerCase().trim()===em) return true;
+        const on = normNombre(p.ownerNombre);
+        if (nom && on) {
+          if (on===nom || on.includes(nom) || nom.includes(on)) return true;
+          const a = nom.split(' ').filter(w=>w.length>2);
+          const b = on.split(' ').filter(w=>w.length>2);
+          if (a.length && b.length && a.every(w=>b.includes(w)) || b.every(w=>a.includes(w))) return true;
+        }
+        return false;
+      });
+    }
     function verDesempenoOwnerLife(id) {
       ensureLifeData();
       const p = (data.lifePropiedades||[]).find(x => String(x.id)===String(id));
@@ -8623,8 +8648,39 @@ inventario: () => {
               </div>
             </div>`;
           }).join('') : `<p class="col-span-full text-ink-500">Aún no tienes presupuestos en tu bandeja.</p>`) + `</div>`;
+      } else if (tab === 'mias') {
+        ensureLifeData();
+        const mias = propiedadesDelCliente();
+        box.innerHTML = `<div class="rounded-3xl p-6 mb-5" style="background:linear-gradient(135deg,#0a0a0b,#1a1610)">
+            <p class="text-gold-400 text-[10px] uppercase tracking-[0.28em]">VIP Life · Exclusividad FLYHOUSE</p>
+            <h2 class="text-white text-2xl font-bold mt-2">Mis propiedades FLYHOUSE</h2>
+            <p class="text-white/60 text-sm mt-2">Las que firmaste con nosotros para gestión. Solo ves métricas; el equipo opera.</p>
+          </div>` +
+          (mias.length ? mias.map(pr => {
+            const res = (data.lifeReservas||[]).filter(r => String(r.propiedadId)===String(pr.id));
+            const bruto = res.reduce((s,r)=>s+(Number(r.total)||0),0);
+            const pct = Number(pr.comisionPlataforma)||15;
+            const com = bruto*pct/100;
+            const neto = bruto - com - (Number(pr.gastoFijo)||0);
+            const foto = (pr.fotos&&pr.fotos[0])||'';
+            return `<div class="card-premium rounded-2xl overflow-hidden mb-4 flex flex-col sm:flex-row">
+              <div class="sm:w-44 h-40 bg-ink-100 flex-shrink-0">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:''}</div>
+              <div class="p-4 flex-1">
+                <p class="text-[10px] uppercase text-gold-600">Contrato de exclusividad</p>
+                <p class="font-bold text-lg">${pr.titulo||pr.nombre||''}</p>
+                <p class="text-xs text-ink-500">${pr.distrito||''} · ${pr.uso||''}</p>
+                <div class="grid grid-cols-3 gap-2 mt-3 text-center">
+                  <div class="rounded-xl bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">Generado</p><p class="text-sm font-bold">S/ ${Math.round(bruto).toLocaleString()}</p></div>
+                  <div class="rounded-xl bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">Comisión ${pct}%</p><p class="text-sm font-bold">S/ ${Math.round(com).toLocaleString()}</p></div>
+                  <div class="rounded-xl bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">A depositarte</p><p class="text-sm font-bold text-emerald-700">S/ ${Math.round(neto).toLocaleString()}</p></div>
+                </div>
+                <button type="button" onclick="verDesempenoOwnerLife('${pr.id}')" class="mt-3 text-sm font-semibold text-gold-700">Ver KPIs →</button>
+              </div></div>`;
+          }).join('') : '<p class="text-sm text-ink-500">Aún no hay propiedades de exclusividad ligadas a tu usuario. El equipo las asigna desde B&B Life.</p>');
       } else if (tab === 'store') {
         registrarActividadCliente('abrió Store');
+        abrirVistaCliente();
+        return;
         const prods = (data.productos||[]).filter(p => !p.oculto);
         const nCart = (typeof carritoCliente!=='undefined' && carritoCliente) ? carritoCliente.reduce((s,i)=>s+(i.qty||1),0) : 0;
         box.innerHTML = `<div class="flex items-end justify-between gap-3 mb-4">
@@ -8647,6 +8703,8 @@ inventario: () => {
           }).join('') : '<p class="col-span-full text-ink-500">Aún no hay productos publicados.</p>') + `</div>`;
       } else if (tab === 'rental') {
         registrarActividadCliente('abrió Rental');
+        abrirVistaRental();
+        return;
         const lista = (typeof listaRentalPublica==='function') ? listaRentalPublica() : (data.inventario||[]).filter(i=>i.rental && !i.oculto);
         box.innerHTML = `<div class="flex items-end justify-between gap-3 mb-4">
             <div><h2 class="text-xl font-bold">Tools Rental</h2><p class="text-sm text-ink-500">Almacenes FLYHOUSE · reserva herramientas</p></div>
@@ -8668,8 +8726,11 @@ inventario: () => {
         ensureLifeData();
         const props = (data.lifePropiedades||[]).filter(p => !p.oculto && p.publicado !== false);
         const cli = storeCliente || {};
-        box.innerHTML = `<h2 class="text-xl font-bold">FLYHOUSE B&amp;B Life</h2>
-          <p class="text-sm text-ink-500 mb-4">Propiedades exclusivas que gestionamos. Reserva noches o mira el desempeño si es tuya.</p>
+        box.innerHTML = `<div class="rounded-3xl p-6 mb-5 text-white" style="background:linear-gradient(135deg,#0a0a0b,#1a1610)">
+            <p class="text-gold-400 text-[10px] uppercase tracking-[0.28em]">The Experience</p>
+            <h2 class="text-2xl font-bold mt-1">FLYHOUSE B&amp;B Life</h2>
+            <p class="text-white/60 text-sm mt-2">Propiedades exclusivas. Reserva noches o gestiona las tuyas en Mis propiedades.</p>
+          </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">` +
           (props.length ? props.map(pr => {
             const foto = (pr.fotos&&pr.fotos[0])||'';
@@ -13808,7 +13869,7 @@ inventario: () => {
           </div>
           <div>
             <label class="form-label">Propietario / usuario plataforma</label>
-            <select id="life-owner" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl bg-cream-50"></select>
+            <select id="life-owner" onchange="onLifeOwnerChange(this)" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl bg-cream-50"></select>
             <input id="life-owner-nombre" class="mt-1.5 w-full px-3 py-2 text-sm border border-gold-200 rounded-xl" placeholder="Si no está registrado, escribe el nombre">
           </div>
           <div>
