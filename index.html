@@ -8690,7 +8690,7 @@ inventario: () => {
       const comisionPct = Number(p.comisionPlataforma)!=null && p.comisionPlataforma!=='' ? Number(p.comisionPlataforma) : 15;
       const comision = bruto * comisionPct / 100;
       const fijo = Number(p.gastoFijo)||0;
-      const netoOwner = k.neto - comision;
+      const netoOwner = bruto - comision;
       const meta = Number(p.metaMensual)||0;
       const el = document.createElement('div');
       el.id = 'modal-owner-life';
@@ -8739,7 +8739,7 @@ inventario: () => {
             const bruto = Number(k.ingresos)||0;
             const pct = Number(pr.comisionPlataforma)||15;
             const com = bruto*pct/100;
-            const neto = bruto - com - (Number(pr.gastoFijo)||0);
+            const neto = bruto - com;
             const foto = (pr.fotos&&pr.fotos[0])||'';
             return `<div class="card-premium rounded-2xl overflow-hidden mb-4 flex flex-col sm:flex-row">
               <div class="sm:w-44 h-40 bg-ink-100 flex-shrink-0">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:''}</div>
