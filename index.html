@@ -8747,11 +8747,11 @@ inventario: () => {
             <p class="text-white/60 text-sm mt-2">Las que firmaste con nosotros para gestión. Solo ves métricas; el equipo opera.</p>
           </div>` +
           (mias.length ? mias.map(pr => {
-            const res = (data.lifeReservas||[]).filter(r => String(r.propiedadId)===String(pr.id));
-            const bruto = res.reduce((s,r)=>s+(Number(r.total)||0),0);
+            const k = kpisLifeProp(pr);
+            const bruto = Number(k.ingresos)||0;
             const pct = Number(pr.comisionPlataforma)||15;
             const com = bruto*pct/100;
-            const neto = bruto - com - (Number(pr.gastoFijo)||0);
+            const neto = (Number(k.neto)||bruto) - com;
             const foto = (pr.fotos&&pr.fotos[0])||'';
             return `<div class="card-premium rounded-2xl overflow-hidden mb-4 flex flex-col sm:flex-row">
               <div class="sm:w-44 h-40 bg-ink-100 flex-shrink-0">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:''}</div>
