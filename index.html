@@ -2150,7 +2150,7 @@
         return (data.usuarios||[]).length + (data.productos||[]).length + (data.contratos||[]).length
           + (data.requerimientos||[]).length + (data.presupuestos||[]).length + (data.clientes||[]).length
           + (data.inventario||[]).length + (data.proveedores||[]).length + (data.lifePropiedades||[]).length
-          + (data.pedidos||[]).length + (data.expertos||[]).length;
+          + (data.pedidos||[]).length + (data.expertos||[]).length + (data.storeClientes||[]).length;
       } catch (e) { return 0; }
     }
 
@@ -2173,9 +2173,23 @@
       }
     }
 
+    function mergeById(localArr, cloudArr) {
+      const map = {};
+      (cloudArr || []).forEach(x => { if (x && x.id != null) map[String(x.id)] = x; });
+      (localArr || []).forEach(x => { if (x && x.id != null) map[String(x.id)] = x; });
+      return Object.values(map);
+    }
     async function cloudPush() {
       if (!supabaseClient) return false;
       try {
+        try {
+          const row = await cloudPull();
+          const remote = row && row.payload && row.payload.data;
+          if (remote) {
+            data.storeClientes = mergeById(data.storeClientes, remote.storeClientes);
+            data.soporteMensajes = mergeById(data.soporteMensajes, remote.soporteMensajes);
+          }
+        } catch (e) {}
         const payload = buildPersistPayload();
         const { error } = await supabaseClient
           .from('system_data')
@@ -2232,6 +2246,7 @@
             + (cloudPayload.data.presupuestos||[]).length + (cloudPayload.data.clientes||[]).length
             + (cloudPayload.data.inventario||[]).length + (cloudPayload.data.proveedores||[]).length
             + (cloudPayload.data.lifePropiedades||[]).length + (cloudPayload.data.expertos||[]).length
+            + (cloudPayload.data.storeClientes||[]).length
           )
         : 0;
       const localScore = localDataScore();
@@ -5113,6 +5128,12 @@
                   <div class="rounded-lg bg-cream-50 border border-gold-50 p-2">Rental: <strong>${rentOrders.length}</strong> · S/ ${Math.round(rentOrders.reduce((s,p)=>s+(Number(p.total)||0),0)).toLocaleString()}</div>
                 </div>
                 ${acts.length ? `<div class="mt-2 text-[10px] text-ink-500 space-y-0.5">${acts.map(a => `<p>· ${a.fecha || ''} ${a.texto || a.tipo}</p>`).join('')}</div>` : ''}
+                <div class="flex flex-wrap gap-2 mt-3">
+                  <button type="button" onclick="verDashboardClientePortal('${c.id}')" class="px-3 py-2 text-sm font-semibold border border-gold-200 rounded-xl">Dashboard</button>
+                  <button type="button" onclick="editarClientePortal('${c.id}')" class="px-3 py-2 text-sm font-semibold border border-gold-200 rounded-xl">Editar</button>
+                  <button type="button" onclick="cambiarPassClientePortal('${c.id}')" class="px-3 py-2 text-sm font-semibold border border-gold-200 rounded-xl">Contraseña</button>
+                  <button type="button" onclick="eliminarClientePortal('${c.id}')" class="px-3 py-2 text-sm font-semibold text-red-600 border border-red-200 rounded-xl">Eliminar</button>
+                </div>
               </div>`;
             }).join('') : '<p class="text-center text-ink-400 py-12 text-sm">Aún no hay suscriptores. Se registran desde el Store o Rental público.</p>'}
           </div>
@@ -8273,6 +8294,95 @@ inventario: () => {
       if (a) a.className = tab==='reg' ? 'py-2 rounded-xl text-sm font-semibold btn-gold' : 'py-2 rounded-xl text-sm font-semibold border border-gold-200';
       if (b) b.className = tab==='login' ? 'py-2 rounded-xl text-sm font-semibold btn-gold' : 'py-2 rounded-xl text-sm font-semibold border border-gold-200';
     }
+    function eliminarClientePortal(id) {
+      pedirPin('Eliminar cliente', 'PIN master para dar de baja este usuario', () => {
+        data.storeClientes = (data.storeClientes || []).filter(c => String(c.id) !== String(id));
+        saveSystemData();
+        navigate('suscriptores');
+        mostrarToast('Usuario dado de baja');
+      });
+    }
+    function cambiarPassClientePortal(id) {
+      const c = (data.storeClientes || []).find(x => String(x.id) === String(id));
+      if (!c) return;
+      document.getElementById('modal-cli-admin')?.remove();
+      const el = document.createElement('div');
+      el.id = 'modal-cli-admin';
+      el.className = 'fixed inset-0 z-[97]';
+      el.innerHTML = `<div class="absolute inset-0 bg-ink-900/50" onclick="this.parentElement.remove()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl w-full max-w-sm p-5 border border-gold-200 space-y-3">
+            <h3 class="font-bold">Nueva contraseña · ${c.nombre||''}</h3>
+            <input id="cli-new-pass" type="text" class="w-full px-3 py-2.5 border border-gold-200 rounded-xl text-sm" placeholder="Nueva clave">
+            <button type="button" onclick="guardarPassClientePortal('${String(id).replace(/'/g,"\\'")}')" class="w-full btn-gold py-2.5 rounded-xl text-sm font-semibold">Guardar</button>
+          </div></div>`;
+      document.body.appendChild(el);
+    }
+    function guardarPassClientePortal(id) {
+      const pass = (document.getElementById('cli-new-pass')?.value || '').trim();
+      if (pass.length < 4) { mostrarToast('Mínimo 4 caracteres'); return; }
+      pedirPin('Cambiar contraseña', 'PIN master', () => {
+        const c = (data.storeClientes || []).find(x => String(x.id) === String(id));
+        if (c) c.pass = pass;
+        saveSystemData();
+        document.getElementById('modal-cli-admin')?.remove();
+        mostrarToast('Contraseña actualizada');
+      });
+    }
+    function editarClientePortal(id) {
+      const c = (data.storeClientes || []).find(x => String(x.id) === String(id));
+      if (!c) return;
+      document.getElementById('modal-cli-admin')?.remove();
+      const el = document.createElement('div');
+      el.id = 'modal-cli-admin';
+      el.className = 'fixed inset-0 z-[97]';
+      el.innerHTML = `<div class="absolute inset-0 bg-ink-900/50" onclick="this.parentElement.remove()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl w-full max-w-md p-5 border border-gold-200 space-y-2">
+            <h3 class="font-bold mb-1">Editar cliente</h3>
+            <input id="ce-nombre" class="w-full px-3 py-2.5 border border-gold-200 rounded-xl text-sm" value="${(c.nombre||'').replace(/"/g,'&quot;')}">
+            <input id="ce-email" class="w-full px-3 py-2.5 border border-gold-200 rounded-xl text-sm" value="${(c.email||'').replace(/"/g,'&quot;')}">
+            <input id="ce-tel" class="w-full px-3 py-2.5 border border-gold-200 rounded-xl text-sm" value="${(c.tel||'').replace(/"/g,'&quot;')}">
+            <button type="button" onclick="guardarEditClientePortal('${String(id).replace(/'/g,"\\'")}')" class="w-full btn-gold py-2.5 rounded-xl text-sm font-semibold">Guardar</button>
+          </div></div>`;
+      document.body.appendChild(el);
+    }
+    function guardarEditClientePortal(id) {
+      const c = (data.storeClientes || []).find(x => String(x.id) === String(id));
+      if (!c) return;
+      c.nombre = document.getElementById('ce-nombre')?.value.trim() || c.nombre;
+      c.email = (document.getElementById('ce-email')?.value || '').trim().toLowerCase() || c.email;
+      c.tel = document.getElementById('ce-tel')?.value.trim() || c.tel;
+      saveSystemData();
+      document.getElementById('modal-cli-admin')?.remove();
+      navigate('suscriptores');
+      mostrarToast('Cliente actualizado');
+    }
+    function verDashboardClientePortal(id) {
+      const c = (data.storeClientes || []).find(x => String(x.id) === String(id));
+      if (!c) return;
+      const pres = (data.presupuestos||[]).filter(p => String(p.clienteId)===String(c.id) || (p.clienteEmail||'').toLowerCase()===(c.email||'').toLowerCase());
+      const msgs = (data.soporteMensajes||[]).filter(m => String(m.clienteId)===String(c.id));
+      document.getElementById('modal-cli-admin')?.remove();
+      const el = document.createElement('div');
+      el.id = 'modal-cli-admin';
+      el.className = 'fixed inset-0 z-[97]';
+      el.innerHTML = `<div class="absolute inset-0 bg-ink-900/50" onclick="this.parentElement.remove()"></div>
+        <div class="absolute inset-0 flex items-start justify-center overflow-y-auto p-4">
+          <div class="bg-white rounded-2xl w-full max-w-lg my-8 p-5 border border-gold-200 space-y-3">
+            <h3 class="font-bold text-lg">${c.nombre||''}</h3>
+            <p class="text-xs text-ink-500">${c.email||''} · ${c.tel||''}</p>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Presupuestos</p><p class="text-xl font-bold">${pres.length}</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Valor</p><p class="text-sm font-bold">S/ ${pres.reduce((s,p)=>s+(Number(p.total)||0),0).toLocaleString()}</p></div>
+              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Mensajes</p><p class="text-xl font-bold">${msgs.length}</p></div>
+            </div>
+            <p class="text-xs font-semibold">Bandeja</p>
+            ${pres.map(pr=>`<p class="text-sm">· ${pr.titulo||pr.id} · ${pr.estado} · S/ ${Number(pr.total||0).toLocaleString()}</p>`).join('') || '<p class="text-xs text-ink-400">Sin presupuestos asignados</p>'}
+            <button type="button" onclick="this.closest('#modal-cli-admin').remove()" class="w-full border border-gold-200 py-2.5 rounded-xl text-sm">Cerrar</button>
+          </div></div>`;
+      document.body.appendChild(el);
+    }
     function registrarClienteLanding() {
       ensureStoreClientes();
       const nombre = (document.getElementById('lreg-nombre')?.value || '').trim();
@@ -8289,6 +8399,7 @@ inventario: () => {
       };
       data.storeClientes.push(cli);
       saveSystemData();
+      try { if (typeof cloudPush === 'function') cloudPush(); } catch(e) {}
       entrarPortalCliente(cli);
     }
     function loginClienteLanding() {
