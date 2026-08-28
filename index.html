@@ -4512,7 +4512,7 @@
         const props = (data.lifePropiedades || []).filter(p => !p.oculto);
         const reservas = (data.lifeReservas || []).filter(r => !r.oculto);
         const activas = reservas.filter(r => ['Confirmada','En curso'].includes(r.estado));
-        const ingresos = reservas.reduce((s,r) => s + (Number(r.total)||0), 0);
+        const ingresos = props.reduce((s,pr) => s + (Number(kpisLifeProp(pr).ingresos)||0), 0);
         const ocupacion = props.length ? Math.round((activas.length / Math.max(1, props.length)) * 100) : 0;
         return `<div class="fade-in space-y-6">
           <div class="rounded-2xl bg-ink-900 text-white p-6 sm:p-8">
@@ -4532,7 +4532,7 @@
           </div>
           <div class="grid md:grid-cols-2 gap-4">
             <div class="card-premium rounded-2xl p-5"><h3 class="font-semibold mb-3">Top propiedades</h3>
-              ${props.slice(0,5).map(p => { const ing = reservas.filter(r => String(r.propiedadId)===String(p.id)).reduce((s,r)=>s+(Number(r.total)||0),0);
+              ${props.slice(0,5).map(p => { const ing = kpisLifeProp(p).ingresos;
                 return `<div class="flex justify-between py-2 border-b border-gold-50 text-sm"><span class="font-medium">${p.titulo||p.nombre}</span><span class="text-gold-600 font-semibold">S/ ${Math.round(ing).toLocaleString()}</span></div>`; }).join('') || '<p class="text-xs text-ink-400">Agrega propiedades exclusivas</p>'}
             </div>
             <div class="card-premium rounded-2xl p-5"><h3 class="font-semibold mb-3">Próximas reservas</h3>
@@ -4578,8 +4578,8 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             ${props.length ? props.map(p => {
               const foto = (p.fotos&&p.fotos[0])||'';
-              const res = (data.lifeReservas||[]).filter(r => String(r.propiedadId)===String(p.id));
-              const ing = res.reduce((s,r)=>s+(Number(r.total)||0),0);
+              const k = kpisLifeProp(p);
+              const ing = k.ingresos;
               return `<div class="card-premium rounded-2xl overflow-hidden flex flex-col sm:flex-row border border-gold-100">
                 <div class="sm:w-40 h-36 sm:h-auto bg-ink-100 flex-shrink-0">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:`<div class="w-full h-full min-h-[9rem] flex items-center justify-center text-ink-300"><i data-lucide="home" class="w-8 h-8"></i></div>`}</div>
                 <div class="p-4 flex-1 flex flex-col">
@@ -4644,11 +4644,11 @@
         ensureLifeData();
         const props = (data.lifePropiedades||[]).filter(p => !p.oculto);
         const rows = props.map(p => {
-          const res = (data.lifeReservas||[]).filter(r => String(r.propiedadId)===String(p.id));
-          const ing = res.reduce((s,r)=>s+(Number(r.total)||0),0);
-          const inv = Number(p.inversion)||0;
-          const margen = inv > 0 ? ((ing - inv) / inv * 100) : (ing > 0 ? 100 : 0);
-          return { p, ing, inv, margen, n: res.length };
+          const k = kpisLifeProp(p);
+          const ing = k.ingresos;
+          const inv = k.inversionTotal || Number(p.inversion)||0;
+          const margen = k.roi;
+          return { p, ing, inv, margen, n: (k.convertidos||0), costos: k.costos, neto: k.neto };
         }).sort((a,b)=>b.ing-a.ing);
         const totalIng = rows.reduce((s,r)=>s+r.ing,0);
         const totalInv = rows.reduce((s,r)=>s+r.inv,0);
@@ -5476,8 +5476,12 @@ inventario: () => {
       });
       if (tipo==='prospecto') p.interacciones = (Number(p.interacciones)||0) + 1;
       saveSystemData();
-      mostrarToast('Evento registrado');
+      try { if (typeof cloudPush === 'function') cloudPush(); } catch(e) {}
+      mostrarToast('Registrado · S/ ' + Number(monto||0).toLocaleString());
       verDashboardLifeProp(id);
+      try {
+        if (currentView === 'life-finanzas' || currentView === 'life-dashboard' || currentView === 'life-propiedades') navigate(currentView);
+      } catch(e) {}
     }
     function verDashboardLifeProp(id) {
       ensureLifeData();
