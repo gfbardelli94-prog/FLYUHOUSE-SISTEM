@@ -304,6 +304,7 @@
           <button type="button" onclick="setPortalTab('rental')" data-ptab="rental" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Rental</button>
           <button type="button" onclick="setPortalTab('life')" data-ptab="life" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">B&amp;B Life</button>
           <button type="button" onclick="setPortalTab('mias')" data-ptab="mias" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Mis propiedades</button>
+          <button type="button" onclick="setPortalTab('emb')" data-ptab="emb" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Embajador</button>
           <button type="button" onclick="setPortalTab('chat')" data-ptab="chat" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Asesor</button>
         </nav>
         <div class="p-3 border-t border-ink-700">
@@ -510,6 +511,9 @@
           </a>
           <a href="#" data-view="life-finanzas" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
             <i data-lucide="wallet" class="w-4.5 h-4.5"></i> Finanzas B&B
+          </a>
+          <a href="#" data-view="life-embajadores" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+            <i data-lucide="megaphone" class="w-4.5 h-4.5"></i> Embajadores
           </a>
         </div>
 
@@ -4674,6 +4678,45 @@
             </tbody></table></div></div>`;
       },
 
+      'life-embajadores': () => {
+        ensureLifeData();
+        const embs = data.lifeEmbajadores || [];
+        const leads = data.lifeLeads || [];
+        const res = data.lifeReservas || [];
+        return `<div class="fade-in space-y-4">
+          <div class="flex justify-between items-end flex-wrap gap-3">
+            <div><h2 class="text-lg font-bold">Embajadores B&B</h2>
+              <p class="text-xs text-ink-500">Usuarios que mueven propiedades exclusivas · track de leads y reservas</p></div>
+            <button type="button" onclick="abrirAltaEmbajador()" class="btn-gold px-4 py-2.5 rounded-xl text-sm font-semibold">+ Embajador</button>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="card-premium rounded-xl p-4"><p class="text-[10px] uppercase text-ink-400">Embajadores</p><p class="text-2xl font-bold">${embs.length}</p></div>
+            <div class="card-premium rounded-xl p-4"><p class="text-[10px] uppercase text-ink-400">Leads</p><p class="text-2xl font-bold">${leads.length}</p></div>
+            <div class="card-premium rounded-xl p-4"><p class="text-[10px] uppercase text-ink-400">Reservas atribuidas</p><p class="text-2xl font-bold">${res.filter(r=>r.embajadorId).length}</p></div>
+            <div class="card-premium rounded-xl p-4"><p class="text-[10px] uppercase text-ink-400">Recompensas</p><p class="text-2xl font-bold text-gold-700">S/ ${Math.round(embs.reduce((s,e)=>s+(kpisEmbajador(e).premio||0),0)).toLocaleString()}</p></div>
+          </div>
+          ${embs.length?embs.map(e=>{
+            const k=kpisEmbajador(e);
+            return `<div class="card-premium rounded-2xl p-4">
+              <div class="flex justify-between gap-2">
+                <div><p class="font-bold">${e.nombre}</p><p class="text-xs text-ink-500">${e.email||''} · código <b>${e.codigo}</b></p></div>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-gold-50 text-gold-700">${e.comisionPct||10}%</span>
+              </div>
+              <div class="grid grid-cols-4 gap-2 mt-3 text-center">
+                <div class="rounded-lg bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">Leads</p><p class="font-bold">${k.leads}</p></div>
+                <div class="rounded-lg bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">Reservas</p><p class="font-bold">${k.reservas}</p></div>
+                <div class="rounded-lg bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">Generado</p><p class="font-bold">S/ ${Math.round(k.generado).toLocaleString()}</p></div>
+                <div class="rounded-lg bg-cream-50 p-2"><p class="text-[9px] uppercase text-ink-400">Premio</p><p class="font-bold text-emerald-700">S/ ${Math.round(k.premio).toLocaleString()}</p></div>
+              </div>
+              <div class="flex gap-2 mt-3">
+                <button type="button" onclick="abrirLeadEmbajador('${e.id}')" class="text-xs font-semibold border border-gold-200 px-3 py-1.5 rounded-lg">+ Lead / reserva</button>
+                <button type="button" onclick="toggleEmbajador('${e.id}')" class="text-xs border border-gold-200 px-3 py-1.5 rounded-lg">${e.activo===false?'Activar':'Pausar'}</button>
+              </div>
+            </div>`;
+          }).join(''):'<p class="text-sm text-ink-400">Todavía no hay embajadores. Elige un usuario o suscriptor.</p>'}
+        </div>`;
+      },
+
       proveedores: () => {
         const clasifColor = {
           "Socio estratégico": "bg-gold-100 text-gold-800 border border-gold-300",
@@ -5939,6 +5982,124 @@ inventario: () => {
       setCorporateArea('property');
       setTimeout(() => navigate('requerimientos'), 300);
     }
+    function listaCandidatosEmbajador() {
+      const out = [];
+      (data.storeClientes||[]).forEach(c => out.push({ tipo:'cliente', id:c.id, nombre:c.nombre, email:c.email }));
+      (data.usuarios||[]).filter(u=>!u.esMaster).forEach(u => out.push({ tipo:'equipo', id:'U-'+u.id, nombre:u.nombre, email:u.email||'' }));
+      return out;
+    }
+    function kpisEmbajador(e) {
+      const leads = (data.lifeLeads||[]).filter(l => String(l.embajadorId)===String(e.id));
+      const res = (data.lifeReservas||[]).filter(r => String(r.embajadorId)===String(e.id));
+      const generado = res.reduce((s,r)=>s+(Number(r.total)||0),0) + leads.filter(l=>l.estado==='Convertido').reduce((s,l)=>s+(Number(l.monto)||0),0);
+      const pct = Number(e.comisionPct)||10;
+      return { leads: leads.length, reservas: res.length, generado, premio: generado * pct / 100 };
+    }
+    function abrirAltaEmbajador() {
+      ensureLifeData();
+      const cands = listaCandidatosEmbajador();
+      document.getElementById('modal-emb')?.remove();
+      const el = document.createElement('div');
+      el.id = 'modal-emb';
+      el.className = 'fixed inset-0 z-[96]';
+      el.innerHTML = `<div class="absolute inset-0 bg-ink-900/50" onclick="this.parentElement.remove()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl w-full max-w-md p-5 border border-gold-200 space-y-3">
+            <h3 class="font-bold">Nuevo embajador</h3>
+            <select id="emb-user" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl">
+              <option value="">Seleccionar usuario / suscriptor</option>
+              ${cands.map(c=>`<option value="${c.tipo}|${c.id}">${c.nombre} · ${c.tipo}</option>`).join('')}
+            </select>
+            <input id="emb-pct" type="number" value="10" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="% recompensa">
+            <button type="button" onclick="guardarEmbajador()" class="w-full btn-gold py-2.5 rounded-xl text-sm font-semibold">Activar embajador</button>
+          </div></div>`;
+      document.body.appendChild(el);
+    }
+    function guardarEmbajador() {
+      const raw = document.getElementById('emb-user')?.value || '';
+      if (!raw) { mostrarToast('Elige un usuario'); return; }
+      const [tipo, id] = raw.split('|');
+      const cand = listaCandidatosEmbajador().find(c => c.tipo===tipo && String(c.id)===String(id));
+      if (!cand) return;
+      if ((data.lifeEmbajadores||[]).some(e => String(e.refId)===String(id))) { mostrarToast('Ya es embajador'); return; }
+      const codigo = 'FH-' + (cand.nombre||'EMB').split(' ')[0].toUpperCase().slice(0,6) + Math.floor(Math.random()*90+10);
+      data.lifeEmbajadores.push({
+        id: 'EMB-' + Date.now().toString(36),
+        refTipo: tipo, refId: id,
+        nombre: cand.nombre, email: cand.email||'',
+        codigo, comisionPct: parseFloat(document.getElementById('emb-pct')?.value)||10,
+        activo: true, creado: new Date().toISOString().slice(0,10)
+      });
+      saveSystemData();
+      document.getElementById('modal-emb')?.remove();
+      navigate('life-embajadores');
+      mostrarToast('Embajador activo · código ' + codigo);
+    }
+    function toggleEmbajador(id) {
+      const e = (data.lifeEmbajadores||[]).find(x => String(x.id)===String(id));
+      if (!e) return;
+      e.activo = e.activo===false;
+      saveSystemData();
+      navigate('life-embajadores');
+    }
+    function abrirLeadEmbajador(embId) {
+      ensureLifeData();
+      const props = (data.lifePropiedades||[]).filter(p=>!p.oculto);
+      document.getElementById('modal-emb')?.remove();
+      const el = document.createElement('div');
+      el.id = 'modal-emb';
+      el.className = 'fixed inset-0 z-[96]';
+      el.innerHTML = `<div class="absolute inset-0 bg-ink-900/50" onclick="this.parentElement.remove()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl w-full max-w-md p-5 border border-gold-200 space-y-2">
+            <h3 class="font-bold">Atribuir movimiento</h3>
+            <select id="emb-prop" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl">
+              ${props.map(p=>`<option value="${p.id}">${p.titulo||p.nombre}</option>`).join('')}
+            </select>
+            <select id="emb-tipo" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl">
+              <option value="lead">Lead / requerimiento</option>
+              <option value="reserva">Reserva convertida</option>
+            </select>
+            <input id="emb-nom" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="Nombre del prospecto / huésped">
+            <input id="emb-monto" type="number" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" placeholder="Monto S/ si ya cerró">
+            <button type="button" onclick="guardarLeadEmbajador('${embId}')" class="w-full btn-gold py-2.5 rounded-xl text-sm font-semibold">Registrar</button>
+          </div></div>`;
+      document.body.appendChild(el);
+    }
+    function guardarLeadEmbajador(embId) {
+      const tipo = document.getElementById('emb-tipo')?.value || 'lead';
+      const propId = document.getElementById('emb-prop')?.value;
+      const nom = document.getElementById('emb-nom')?.value.trim() || 'Prospecto';
+      const monto = parseFloat(document.getElementById('emb-monto')?.value)||0;
+      if (tipo==='reserva') {
+        data.lifeReservas.unshift({
+          id: 'LR-' + Date.now().toString(36),
+          propiedadId: propId, huesped: nom, total: monto,
+          estado: 'Confirmada', embajadorId: embId,
+          fecha: new Date().toISOString().slice(0,10)
+        });
+      } else {
+        data.lifeLeads.unshift({
+          id: 'LL-' + Date.now().toString(36),
+          propiedadId: propId, nombre: nom, monto,
+          estado: monto>0?'Convertido':'Pendiente',
+          embajadorId: embId, fecha: new Date().toISOString().slice(0,10)
+        });
+      }
+      saveSystemData();
+      try { if (typeof cloudPush==='function') cloudPush(); } catch(e) {}
+      document.getElementById('modal-emb')?.remove();
+      navigate('life-embajadores');
+      mostrarToast('Atribuido al embajador');
+    }
+    function embajadorDelCliente() {
+      const cli = storeCliente || {};
+      return (data.lifeEmbajadores||[]).find(e =>
+        String(e.refId)===String(cli.id) ||
+        (cli.email && (e.email||'').toLowerCase()===(cli.email||'').toLowerCase()) ||
+        (cli.nombre && normNombre(e.nombre)===normNombre(cli.nombre))
+      );
+    }
     function abrirModalLifeReserva() {
       ensureLifeData();
       const props = data.lifePropiedades.filter(p => !p.oculto);
@@ -6001,6 +6162,8 @@ inventario: () => {
       if (!data.lifeHuespedes) data.lifeHuespedes = [];
       if (!data.nextLifePropId) data.nextLifePropId = 1;
       if (!data.nextLifeResId) data.nextLifeResId = 1;
+      if (!data.lifeEmbajadores) data.lifeEmbajadores = [];
+      if (!data.lifeLeads) data.lifeLeads = [];
     }
 
 
@@ -8871,6 +9034,24 @@ inventario: () => {
                 </div>
               </div></div>`;
           }).join('') : '<p class="col-span-full text-ink-500">Aún no hay propiedades exclusivas publicadas.</p>') + `</div>`;
+      } else if (tab === 'emb') {
+        const e = embajadorDelCliente();
+        if (!e) {
+          box.innerHTML = `<h2 class="text-xl font-bold mb-2">Programa embajador</h2><p class="text-sm text-ink-500">Aún no estás activado como embajador. El equipo FLYHOUSE te habilita desde B&B Life.</p>`;
+        } else {
+          const k = kpisEmbajador(e);
+          box.innerHTML = `<div class="rounded-3xl p-6 mb-5 text-white" style="background:linear-gradient(135deg,#0a0a0b,#1a1610)">
+              <p class="text-gold-400 text-[10px] uppercase tracking-[0.28em]">Embajador FLYHOUSE</p>
+              <h2 class="text-2xl font-bold mt-1">${e.nombre}</h2>
+              <p class="text-white/60 text-sm mt-1">Código ${e.codigo} · ${e.comisionPct||10}% de recompensa</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="card-premium rounded-2xl p-4"><p class="text-[10px] uppercase text-ink-400">Leads</p><p class="text-2xl font-bold">${k.leads}</p></div>
+              <div class="card-premium rounded-2xl p-4"><p class="text-[10px] uppercase text-ink-400">Reservas</p><p class="text-2xl font-bold">${k.reservas}</p></div>
+              <div class="card-premium rounded-2xl p-4"><p class="text-[10px] uppercase text-ink-400">Generado</p><p class="text-2xl font-bold">S/ ${Math.round(k.generado).toLocaleString()}</p></div>
+              <div class="card-premium rounded-2xl p-4"><p class="text-[10px] uppercase text-ink-400">Tu premio</p><p class="text-2xl font-bold text-emerald-700">S/ ${Math.round(k.premio).toLocaleString()}</p></div>
+            </div>`;
+        }
       } else if (tab === 'chat') {
         if (!data.soporteMensajes) data.soporteMensajes = [];
         const mine = data.soporteMensajes.filter(m => String(m.clienteId) === String(storeCliente && storeCliente.id));
