@@ -2323,8 +2323,7 @@
           .from('system_data')
           .upsert({
             id: 'main',
-            payload: payload,
-            updated_at: new Date().toISOString()
+            payload: payload
           });
         if (error) {
           console.error('cloudPush', error);
