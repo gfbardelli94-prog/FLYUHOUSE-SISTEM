@@ -2901,6 +2901,22 @@
         badge: ''
       };
     }
+    function splitContrato(c) {
+      const total = Number(c && c.valor)||0;
+      let experto = Number(c && c.montoExperto);
+      let empresa = Number(c && c.montoEmpresa);
+      if (c && c.splitTipo === 'porcentaje') {
+        const pe = Number(c.splitExpertoPct);
+        if (!isNaN(pe) && pe >= 0) {
+          experto = total * pe / 100;
+          empresa = total - experto;
+        }
+      }
+      if (isNaN(experto)) experto = Number(c && c.costo)||0;
+      if (isNaN(empresa)) empresa = total - (experto||0);
+      const dep = Number(c && c.depositadoExperto)||0;
+      return { total, experto: experto||0, empresa: empresa||0, depositado: dep, falta: Math.max(0, (experto||0) - dep) };
+    }
     function calcMetricasDashboard() {
       try { repararVinculosContratos(); } catch (e) {}
       let cts = [];
@@ -2947,6 +2963,12 @@
         return (l.fecha || '').slice(0, 10) === hoy && (!cu || String(l.usuarioId) === String(cu.id) || (currentUser && currentUser.esMaster && !window._vistaComoId));
       });
       const puntosHoy = logHoy.reduce((s, l) => s + (Number(l.puntos) || 0), 0);
+      const generales = (data.contratos||[]).filter(c => !c.oculto && c.tipo !== 'subcontrato');
+      const splitAll = generales.map(splitContrato);
+      const empresaGana = splitAll.reduce((s,x)=>s+(x.empresa||0),0);
+      const expertoGana = splitAll.reduce((s,x)=>s+(x.experto||0),0);
+      const expertoDep = splitAll.reduce((s,x)=>s+(x.depositado||0),0);
+      const expertoFalta = splitAll.reduce((s,x)=>s+(x.falta||0),0);
       const racha = finalizados.length;
       const prox = racha >= 5 ? 'Bonus equipo' : (5 - racha) + ' cierres para bonus';
       let mensajeMotivador = 'Cada avance que registras hoy se ve en el dashboard y en tus puntos.';
