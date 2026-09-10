@@ -2955,6 +2955,7 @@
       else if (montoPorCobrar > 0) mensajeMotivador = 'Tienes S/ ' + Math.round(montoPorCobrar).toLocaleString() + ' por cobrar · adjunta vouchers si ya te pagaron.';
       else if (facturado > 0) mensajeMotivador = 'Buen ritmo de cierre. Ya generaste S/ ' + Math.round(facturado).toLocaleString() + ' culminados.';
       return {
+        empresaGana, expertoGana, expertoDep, expertoFalta,
         facturado, enEjecucionValor, pipeline: pipelineTotal,
         pipelineContratos: pipeline,
         potencialReq: potReq,
@@ -3597,6 +3598,17 @@
               <p class="text-2xl font-bold ${m.nAtraso?'text-red-600':'text-ink-400'} mt-1">${m.nAtraso}</p>
               <p class="text-xs text-ink-500 mt-1">${m.nRiesgo} en riesgo (≤3 días)</p>
             </div>
+            ${esMasterReal && !window._vistaComoId ? `
+            <div class="card-premium rounded-2xl p-5 border-l-4 border-ink-800">
+              <p class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Compañía</p>
+              <p class="text-2xl font-bold text-ink-900 mt-1">S/ ${Math.round(m.empresaGana||0).toLocaleString()}</p>
+              <p class="text-xs text-ink-500 mt-1">Tu parte en contratos</p>
+            </div>
+            <div class="card-premium rounded-2xl p-5 border-l-4 ${(m.expertoFalta||0)>0?'border-red-400':'border-emerald-400'}">
+              <p class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Expertos · por depositar</p>
+              <p class="text-2xl font-bold ${(m.expertoFalta||0)>0?'text-red-600':'text-emerald-600'} mt-1">S/ ${Math.round(m.expertoFalta||0).toLocaleString()}</p>
+              <p class="text-xs text-ink-500 mt-1">Ganan S/ ${Math.round(m.expertoGana||0).toLocaleString()} · ya dep. S/ ${Math.round(m.expertoDep||0).toLocaleString()}</p>
+            </div>` : ''}
             <div class="card-premium rounded-2xl p-5 border-l-4 border-gold-400 cursor-pointer hover:ring-2 hover:ring-gold-300" onclick="mostrarDetallePuntos()">
               <p class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">${esMasterReal && !window._vistaComoId ? 'Puntos equipo' : 'Mis puntos'}</p>
               <p class="text-2xl font-bold text-gold-600 mt-1">${esMasterReal && !window._vistaComoId ? totalPtsEquipo : m.puntos}</p>
@@ -4117,14 +4129,37 @@
         if (!puedeVerTodo()) {
           return `<div class="fade-in card-premium rounded-2xl p-8 text-center text-ink-500">Solo el Master (o usuarios con permiso) pueden crear presupuestos premium.</div>`;
         }
-        const lista = (data.presupuestos || []).filter(p => !p.oculto).sort((a,b) => String(b.fecha||'').localeCompare(String(a.fecha||'')));
+        if (!window._presFiltro) window._presFiltro = 'cerrar';
+        const f = window._presFiltro;
+        const allP = (data.presupuestos || []).filter(p => !p.oculto).sort((a,b) => String(b.fecha||'').localeCompare(String(a.fecha||'')));
+        const esCerrado = (p) => p.estado==='Aceptado' || p.contratoId || p.reqId;
+        const esFrio = (p) => !esCerrado(p) && (p.vistoPorCliente || p.estado==='Consultado' || p.temperatura==='frio');
+        const esCaliente = (p) => !esCerrado(p) && !esFrio(p);
+        let lista = allP;
+        if (f==='cerrar') lista = allP.filter(p => !esCerrado(p) && p.estado!=='Rechazado');
+        else if (f==='calientes') lista = allP.filter(esCaliente);
+        else if (f==='frios') lista = allP.filter(esFrio);
+        else if (f==='aceptados') lista = allP.filter(esCerrado);
+        else if (f==='rechazados') lista = allP.filter(p => p.estado==='Rechazado');
+        const nCerrar = allP.filter(p => !esCerrado(p) && p.estado!=='Rechazado').length;
+        const nHot = allP.filter(esCaliente).length;
+        const nCold = allP.filter(esFrio).length;
+        const nOk = allP.filter(esCerrado).length;
         const ids = lista.map(p => String(p.id));
         const allSel = ids.length && ids.every(id => seleccion.presupuestos.has(id));
+        const tabBtn = (id, label, n) => `<button type="button" onclick="window._presFiltro='${id}';navigate('presupuestos')" class="px-3 py-1.5 rounded-full text-xs font-semibold ${f===id?'btn-gold':'bg-white border border-gold-200'}">${label}${n!=null?' · '+n:''}</button>`;
         return `
         <div class="fade-in space-y-5">
+          <div class="flex gap-2 overflow-x-auto pb-1">
+            ${tabBtn('cerrar','Por cerrar', nCerrar)}
+            ${tabBtn('calientes','Calientes', nHot)}
+            ${tabBtn('frios','Fríos', nCold)}
+            ${tabBtn('aceptados','En contrato', nOk)}
+            ${tabBtn('todos','Todos', allP.length)}
+          </div>
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p class="text-sm text-ink-500">Plantillas maestras de alto impacto · link único para el cliente · embudo hacia requerimientos</p>
+              <p class="text-sm text-ink-500">Los aceptados salen de Por cerrar y pasan a En contrato</p>
             </div>
             <button type="button" onclick="abrirModalPresupuesto()" class="btn-gold px-4 py-2.5 text-sm rounded-xl flex items-center gap-2">
               <i data-lucide="plus" class="w-4 h-4"></i> Nuevo presupuesto
@@ -9413,7 +9448,7 @@ inventario: () => {
       } else if (tab === 'obras') {
         const cli = storeCliente || {};
         const nom = normNombre(cli.nombre);
-        const obras = (data.contratos||[]).filter(c => !c.oculto && (
+        const obras = (data.contratos||[]).filter(c => !c.oculto && c.tipo !== 'subcontrato' && (
           (cli.id && String(c.clienteId)===String(cli.id)) ||
           (nom && normNombre(c.cliente)===nom) ||
           (nom && normNombre(c.cliente).includes(nom))
@@ -10244,6 +10279,21 @@ inventario: () => {
               <p class="font-bold text-ink-800">${c.avance||0}%</p>
             </div>
           </div>
+          ${(typeof esMasterReal!=='undefined' && (currentUser&&currentUser.esMaster) || (typeof esMasterReal==='boolean' && esMasterReal)) ? `
+          <div class="rounded-2xl border border-gold-200 p-4 bg-cream-50/80 space-y-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-ink-600">Split Master · compañía vs experto</p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <select id="sp-tipo-${c.id}" class="px-2 py-2 text-xs border border-gold-200 rounded-xl">
+                <option value="porcentaje" ${c.splitTipo!=='monto'?'selected':''}>Por %</option>
+                <option value="monto" ${c.splitTipo==='monto'?'selected':''}>Por monto S/</option>
+              </select>
+              <input id="sp-exp-${c.id}" type="number" step="0.01" class="px-2 py-2 text-xs border border-gold-200 rounded-xl" placeholder="Experto" value="${c.splitTipo==='monto'?(c.montoExperto||''):(c.splitExpertoPct||'')}">
+              <input id="sp-emp-${c.id}" type="number" step="0.01" class="px-2 py-2 text-xs border border-gold-200 rounded-xl" placeholder="Compañía" value="${c.splitTipo==='monto'?(c.montoEmpresa||''):(c.splitEmpresaPct||'')}">
+              <input id="sp-dep-${c.id}" type="number" step="0.01" class="px-2 py-2 text-xs border border-gold-200 rounded-xl" placeholder="Ya depositado al experto" value="${c.depositadoExperto||0}">
+            </div>
+            <button type="button" onclick="guardarSplitContrato('${c.id}')" class="btn-gold px-4 py-2 rounded-xl text-xs font-semibold">Guardar split</button>
+            <p class="text-[10px] text-ink-400">Si usas %, Experto + Compañía deben sumar 100. El dashboard toma estos montos.</p>
+          </div>` : ''}
           <div class="flex flex-wrap gap-3 text-xs">
             <span class="stage-badge px-2.5 py-1 rounded-full ${etapasColor[c.etapa]||'bg-ink-100'}">${c.etapa}</span>
             <span class="text-ink-500">Resp: <strong class="text-ink-700">${c.responsable||'—'}</strong></span>
@@ -10261,7 +10311,7 @@ inventario: () => {
               <div>
                 <label class="form-label">Etapa del trabajo</label>
                 <select id="upd-etapa-${c.id}" class="w-full px-3 py-2 text-sm border border-gold-200 rounded-xl bg-white">
-                  ${['Lead','Cotización','Negociación','Ejecución','Entrega','Garantía','Finalizado'].map(et =>
+                  ${['Por iniciar','Lead','Cotización','Negociación','Ejecución','Entrega','Garantía','Finalizado'].map(et =>
                     `<option value="${et}" ${c.etapa===et?'selected':''}>${et}</option>`
                   ).join('')}
                 </select>
@@ -10399,6 +10449,30 @@ inventario: () => {
       verDetalleContrato(id);
       mostrarToast('Seguimiento agregado');
     }
+    function guardarSplitContrato(id) {
+      if (!(currentUser && currentUser.esMaster)) { mostrarToast('Solo Master'); return; }
+      const c = data.contratos.find(x => String(x.id)===String(id));
+      if (!c) return;
+      const tipo = document.getElementById('sp-tipo-'+id)?.value || 'porcentaje';
+      const a = parseFloat(document.getElementById('sp-exp-'+id)?.value);
+      const b = parseFloat(document.getElementById('sp-emp-'+id)?.value);
+      const dep = parseFloat(document.getElementById('sp-dep-'+id)?.value)||0;
+      c.splitTipo = tipo;
+      if (tipo==='porcentaje') {
+        c.splitExpertoPct = isNaN(a)?0:a;
+        c.splitEmpresaPct = isNaN(b)?(100-(c.splitExpertoPct||0)):b;
+        c.montoExperto = (Number(c.valor)||0) * (c.splitExpertoPct||0) / 100;
+        c.montoEmpresa = (Number(c.valor)||0) * (c.splitEmpresaPct||0) / 100;
+      } else {
+        c.montoExperto = isNaN(a)?0:a;
+        c.montoEmpresa = isNaN(b)?((Number(c.valor)||0)-c.montoExperto):b;
+      }
+      c.depositadoExperto = dep;
+      saveSystemData();
+      try { if (typeof cloudPush==='function') cloudPush(); } catch(e) {}
+      verDetalleContrato(id);
+      mostrarToast('Split guardado');
+    }
     function guardarAvanceContrato(id) {
       const c = data.contratos.find(x => String(x.id) === String(id));
       if (!c) return;
@@ -10423,9 +10497,22 @@ inventario: () => {
         autor
       });
       try { upsertClienteFromContrato(c, false); } catch (e) {}
+      // replicar al contrato general del mismo presupuesto/cliente+obra
+      (data.contratos||[]).forEach(o => {
+        if (String(o.id)===String(c.id) || o.oculto) return;
+        const samePres = c.origenPresupuestoId && String(o.origenPresupuestoId)===String(c.origenPresupuestoId);
+        const sameJob = o.tipo==='general' && c.tipo==='subcontrato' && normNombre(o.cliente)===normNombre(c.cliente) && String(o.propiedad||'').split(' · ')[0]===String(c.propiedad||'').split(' · ')[0];
+        if (samePres || sameJob) {
+          o.etapa = c.etapa;
+          o.avance = c.avance;
+          if (!o.seguimientos) o.seguimientos = [];
+          o.seguimientos.push({ fecha: new Date().toISOString().slice(0,10), texto: 'Actualizado desde ' + c.id + ' · ' + partes.join(' · '), autor });
+        }
+      });
       saveSystemData();
+      try { if (typeof cloudPush==='function') cloudPush(); } catch(e) {}
       verDetalleContrato(id);
-      mostrarToast('Avance guardado · ' + etapa + ' · ' + (c.avance||0) + '%');
+      mostrarToast('Avance guardado · el cliente lo ve en Mis obras');
     }
     function marcarTurnoTerminado(id) {
       const c = data.contratos.find(x => String(x.id) === String(id));
