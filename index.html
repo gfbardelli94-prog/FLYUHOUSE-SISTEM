@@ -5439,7 +5439,7 @@
                 </div>
                 ${acts.length ? `<div class="mt-2 text-[10px] text-ink-500 space-y-0.5">${acts.map(a => `<p>· ${a.fecha || ''} ${a.texto || a.tipo}</p>`).join('')}</div>` : ''}
                 <div class="flex flex-wrap gap-2 mt-3">
-                  <button type="button" onclick="verDashboardClientePortal('${c.id}')" class="px-3 py-2 text-sm font-semibold border border-gold-200 rounded-xl">Dashboard</button>
+                  <button type="button" onclick="verDashboardClientePortal('${c.id}')" class="px-3 py-2 text-sm font-semibold btn-gold rounded-xl">Ver su bandeja</button>
                   <button type="button" onclick="editarClientePortal('${c.id}')" class="px-3 py-2 text-sm font-semibold border border-gold-200 rounded-xl">Editar</button>
                   <button type="button" onclick="cambiarPassClientePortal('${c.id}')" class="px-3 py-2 text-sm font-semibold border border-gold-200 rounded-xl">Contraseña</button>
                   <button type="button" onclick="eliminarClientePortal('${c.id}')" class="px-3 py-2 text-sm font-semibold text-red-600 border border-red-200 rounded-xl">Eliminar</button>
@@ -9242,30 +9242,74 @@ inventario: () => {
       navigate('suscriptores');
       mostrarToast('Cliente actualizado');
     }
+    function matchClienteRec(c, obj) {
+      if (!c || !obj) return false;
+      if (c.id && obj.clienteId && String(c.id)===String(obj.clienteId)) return true;
+      const em = (c.email||'').toLowerCase();
+      if (em && ((obj.clienteEmail||'').toLowerCase()===em || (obj.email||'').toLowerCase()===em)) return true;
+      const n = normNombre(c.nombre);
+      return !!(n && (normNombre(obj.cliente)===n || normNombre(obj.cliente).includes(n) || n.includes(normNombre(obj.cliente||''))));
+    }
     function verDashboardClientePortal(id) {
       const c = (data.storeClientes || []).find(x => String(x.id) === String(id));
       if (!c) return;
-      const pres = (data.presupuestos||[]).filter(p => String(p.clienteId)===String(c.id) || (p.clienteEmail||'').toLowerCase()===(c.email||'').toLowerCase());
-      const msgs = (data.soporteMensajes||[]).filter(m => String(m.clienteId)===String(c.id));
+      const pres = (data.presupuestos||[]).filter(p => !p.oculto && matchClienteRec(c,p));
+      const acc = pres.filter(p => p.estado==='Aceptado' || p.contratoId);
+      const pend = pres.filter(p => p.estado!=='Aceptado' && p.estado!=='Rechazado' && !p.contratoId);
+      const cts = (data.contratos||[]).filter(x => !x.oculto && x.tipo!=='subcontrato' && matchClienteRec(c,x));
+      const reqs = (data.requerimientos||[]).filter(r => !r.oculto && matchClienteRec(c,r));
       document.getElementById('modal-cli-admin')?.remove();
       const el = document.createElement('div');
       el.id = 'modal-cli-admin';
       el.className = 'fixed inset-0 z-[97]';
       el.innerHTML = `<div class="absolute inset-0 bg-ink-900/50" onclick="this.parentElement.remove()"></div>
         <div class="absolute inset-0 flex items-start justify-center overflow-y-auto p-4">
-          <div class="bg-white rounded-2xl w-full max-w-lg my-8 p-5 border border-gold-200 space-y-3">
-            <h3 class="font-bold text-lg">${c.nombre||''}</h3>
-            <p class="text-xs text-ink-500">${c.email||''} · ${c.tel||''}</p>
-            <div class="grid grid-cols-3 gap-2 text-center">
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Presupuestos</p><p class="text-xl font-bold">${pres.length}</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Valor</p><p class="text-sm font-bold">S/ ${pres.reduce((s,p)=>s+(Number(p.total)||0),0).toLocaleString()}</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Mensajes</p><p class="text-xl font-bold">${msgs.length}</p></div>
+          <div class="bg-white rounded-2xl w-full max-w-2xl my-6 border border-gold-200 overflow-hidden">
+            <div class="bg-ink-900 text-white p-5 flex justify-between gap-3">
+              <div>
+                <p class="text-gold-400 text-[10px] uppercase tracking-wider">Vista Master · bandeja del cliente</p>
+                <h3 class="text-xl font-bold">${c.nombre||''}</h3>
+                <p class="text-xs text-white/50">${c.email||''} · ${c.tel||c.telefono||''}</p>
+              </div>
+              <button type="button" onclick="document.getElementById('modal-cli-admin')?.remove()" class="text-white/70">✕</button>
             </div>
-            <p class="text-xs font-semibold">Bandeja</p>
-            ${pres.map(pr=>`<p class="text-sm">· ${pr.titulo||pr.id} · ${pr.estado} · S/ ${Number(pr.total||0).toLocaleString()}</p>`).join('') || '<p class="text-xs text-ink-400">Sin presupuestos asignados</p>'}
-            <button type="button" onclick="this.closest('#modal-cli-admin').remove()" class="w-full border border-gold-200 py-2.5 rounded-xl text-sm">Cerrar</button>
-          </div></div>`;
+            <div class="p-5 space-y-4">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Por aprobar</p><p class="text-xl font-bold text-amber-600">${pend.length}</p></div>
+                <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Aprobados</p><p class="text-xl font-bold text-emerald-700">${acc.length}</p></div>
+                <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Obras</p><p class="text-xl font-bold">${cts.length}</p></div>
+                <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Requerimientos</p><p class="text-xl font-bold">${reqs.length}</p></div>
+              </div>
+              <p class="text-xs font-semibold">Presupuestos (lo que ella ve)</p>
+              ${pres.map(pr=>`<div class="flex justify-between gap-2 text-sm py-1.5 border-b border-gold-50">
+                <span>${pr.titulo||pr.id} · ${pr.estado||''} · S/ ${Number(pr.total||0).toLocaleString()}</span>
+                <span class="flex gap-2">
+                  <button type="button" class="text-xs text-gold-700 font-semibold" onclick="document.getElementById('modal-cli-admin')?.remove();abrirVistaClientePresupuesto('${String(pr.id).replace(/'/g,"\'")}')">Ver</button>
+                  <button type="button" class="text-xs text-red-600 font-semibold" onclick="pedirPin('Quitar presupuesto','PIN master',()=>{const x=(data.presupuestos||[]).find(i=>String(i.id)==='${String(pr.id).replace(/'/g,"\'")}'); if(x) x.oculto=true; saveSystemData(); verDashboardClientePortal('${String(c.id).replace(/'/g,"\'")}');})">Ocultar</button>
+                </span>
+              </div>`).join('') || '<p class="text-xs text-ink-400">Sin presupuestos</p>'}
+              <p class="text-xs font-semibold mt-2">Obras / contratos</p>
+              ${cts.map(ct=>`<div class="flex justify-between gap-2 text-sm py-1.5 border-b border-gold-50">
+                <span>${ct.id} · ${ct.propiedad||''} · ${ct.etapa} · ${ct.avance||0}%</span>
+                <button type="button" class="text-xs text-gold-700 font-semibold" onclick="document.getElementById('modal-cli-admin')?.remove();verDetalleContrato('${ct.id}')">Abrir</button>
+              </div>`).join('') || '<p class="text-xs text-ink-400">Sin obras</p>'}
+              <div class="flex flex-wrap gap-2 pt-2">
+                <button type="button" onclick="entrarComoClienteMaster('${String(c.id).replace(/'/g,"\'")}')" class="btn-gold px-4 py-2.5 rounded-xl text-sm font-semibold">Ver su portal</button>
+                <button type="button" onclick="editarClientePortal('${String(c.id).replace(/'/g,"\'")}')" class="border border-gold-200 px-4 py-2.5 rounded-xl text-sm">Editar ficha</button>
+                <button type="button" onclick="eliminarClientePortal('${String(c.id).replace(/'/g,"\'")}')" class="border border-red-200 text-red-600 px-4 py-2.5 rounded-xl text-sm">Eliminar usuario</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
       document.body.appendChild(el);
+    }
+    function entrarComoClienteMaster(id) {
+      pedirPin('Ver portal del cliente', 'PIN master', () => {
+        const c = (data.storeClientes||[]).find(x => String(x.id)===String(id));
+        if (!c) return;
+        document.getElementById('modal-cli-admin')?.remove();
+        if (typeof entrarPortalCliente==='function') entrarPortalCliente(c);
+      });
     }
     function registrarClienteLanding() {
       ensureStoreClientes();
