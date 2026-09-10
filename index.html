@@ -3951,7 +3951,8 @@
 
       contratos: () => {
         try { if (currentUser) idsExpertosDelUsuario(); } catch (e) {}
-        const lista = contratosDelUsuarioActual();
+        const rawCt = contratosDelUsuarioActual();
+        const lista = puedeVerTodo() ? rawCt.filter(c => c.tipo !== 'subcontrato') : rawCt;
         const porCliente = {};
         lista.forEach(c => {
           const k = c.cliente || 'Sin cliente';
@@ -4018,6 +4019,10 @@
               <div class="divide-y divide-gold-50">
                 ${contratos.map(c => {
                   const st = estadoVisualContrato(c);
+                  const hijos = rawCt.filter(s => s.tipo==='subcontrato' && !s.oculto && (
+                    String(s.contratoPadreId)===String(c.id) || String(s.origenPresupuestoId||'')===String(c.origenPresupuestoId||'__') && c.origenPresupuestoId ||
+                    (normNombre(s.cliente)===normNombre(c.cliente) && String(s.propiedad||'').indexOf(String(c.propiedad||'').split(' · ')[0])===0)
+                  ));
                   return `
                   <div class="px-5 py-3.5 flex flex-wrap items-center gap-3 transition cursor-pointer relative group ${st.rowClass}" onclick="verDetalleContrato('${c.id}')">
                     <div class="min-w-[100px]">
@@ -4037,7 +4042,11 @@
                     <button type="button" onclick="event.stopPropagation();abrirMenuContrato(event,'${c.id}')" class="ml-auto p-2 hover:bg-gold-100 rounded-lg transition border border-transparent hover:border-gold-200">
                       <i data-lucide="more-horizontal" class="w-4 h-4 text-ink-500"></i>
                     </button>
-                  </div>`;
+                  </div>
+                  ${hijos.map(s=>`<div class="px-8 py-2 text-xs text-ink-500 bg-cream-50 flex justify-between">
+                    <span>Equipo · ${s.responsable||''} · ${s.id}</span>
+                    <span>S/ ${Number(s.valor||0).toLocaleString()} · ${s.etapa}</span>
+                  </div>`).join('')}`;
                 }).join('')}
               </div>
             </div>`;
