@@ -2151,6 +2151,7 @@
       if (!data.vistosAlertas || typeof data.vistosAlertas !== 'object') data.vistosAlertas = {};
       if (!Array.isArray(data.usuarios)) data.usuarios = [];
       if (!Array.isArray(data.productos)) data.productos = [];
+      try { rehidratarFotos(); } catch(e) {}
       if (!Array.isArray(data.storeCategorias)) data.storeCategorias = [];
       if (!Array.isArray(data.proveedores)) data.proveedores = [];
       if (!Array.isArray(data.inventario)) data.inventario = [];
@@ -2214,6 +2215,8 @@
             data.presupuestos = mergeById(data.presupuestos, remote.presupuestos);
             data.lifePropiedades = mergeById(data.lifePropiedades, remote.lifePropiedades);
             data.lifeReservas = mergeById(data.lifeReservas, remote.lifeReservas);
+            data.lifeEmbajadores = mergeById(data.lifeEmbajadores, remote.lifeEmbajadores);
+            data.lifeLeads = mergeById(data.lifeLeads, remote.lifeLeads);
           }
         } catch (e) {}
         const payload = buildPersistPayload();
@@ -2345,6 +2348,52 @@
         }
       }
     }
+    const MEDIA_KEY = 'FLYHOUSE_MEDIA_V1';
+    function mediaMap() {
+      try { return JSON.parse(localStorage.getItem(MEDIA_KEY) || '{}') || {}; } catch(e) { return {}; }
+    }
+    function mediaKey(tipo, id) { return String(tipo)+':'+String(id); }
+    function leerMedia(k) { return mediaMap()[k] || ''; }
+    function guardarMediaItem(tipo, id, src) {
+      if (!id || !isValidFoto(src)) return;
+      const m = mediaMap();
+      m[mediaKey(tipo,id)] = src;
+      try { localStorage.setItem(MEDIA_KEY, JSON.stringify(m)); } catch(e) {}
+    }
+    function snapshotFotosAMedia() {
+      (data.productos||[]).forEach(p => {
+        const f = (p.fotos||[]).find(isValidFoto) || p.foto;
+        if (f) guardarMediaItem('productos', p.id, f);
+      });
+      (data.inventario||[]).forEach(p => {
+        const f = (p.fotos||[]).find(isValidFoto) || p.foto;
+        if (f) guardarMediaItem('inventario', p.id, f);
+      });
+      (data.lifePropiedades||[]).forEach(p => {
+        const f = (p.fotos||[]).find(isValidFoto);
+        if (f) guardarMediaItem('life', p.id, f);
+      });
+    }
+    function rehidratarFotos() {
+      const m = mediaMap();
+      (data.productos||[]).forEach(p => {
+        const has = (p.fotos||[]).some(isValidFoto) || isValidFoto(p.foto);
+        if (has) return;
+        const f = m[mediaKey('productos', p.id)];
+        if (isValidFoto(f)) { p.fotos = [f]; p.foto = f; }
+      });
+      (data.inventario||[]).forEach(p => {
+        const has = (p.fotos||[]).some(isValidFoto) || isValidFoto(p.foto);
+        if (has) return;
+        const f = m[mediaKey('inventario', p.id)];
+        if (isValidFoto(f)) { p.fotos = [f]; p.foto = f; }
+      });
+      (data.lifePropiedades||[]).forEach(p => {
+        if ((p.fotos||[]).some(isValidFoto)) return;
+        const f = m[mediaKey('life', p.id)];
+        if (isValidFoto(f)) p.fotos = [f];
+      });
+    }
     function saveSystemData() {
       try {
         const payload = {
@@ -2352,6 +2401,7 @@
           nextProductId: nextProductId,
           savedAt: new Date().toISOString()
         };
+        try { snapshotFotosAMedia(); } catch(e) {}
         localStorage.setItem(DATA_KEY, JSON.stringify(payload));
         localStorage.setItem(META_KEY, JSON.stringify({ savedAt: payload.savedAt, productos: (data.productos||[]).length, proveedores: (data.proveedores||[]).length }));
         try { scheduleCloudPush(); } catch (e) {}
@@ -2385,8 +2435,7 @@
             (clone.productos || []).forEach(p => { p.fotos = []; });
             (clone.inventario || []).forEach(p => { p.fotos = []; delete p.foto; });
             localStorage.setItem(DATA_KEY, JSON.stringify({ data: clone, nextProductId, savedAt: new Date().toISOString() }));
-            mostrarToast('Guardado sin fotos pesadas · vuelve a subir fotos más livianas');
-            data = clone;
+            mostrarToast('Cuota llena: se guardó el texto. Las fotos quedan en caché local.');
             return true;
           } catch (e3) {
             mostrarToast('No se pudo guardar. Borra fotos antiguas o usa imágenes más ligeras.');
@@ -2428,11 +2477,11 @@
           if (!data.vistosAlertas || typeof data.vistosAlertas !== 'object') data.vistosAlertas = {};
           if (!Array.isArray(data.usuarios)) data.usuarios = [];
           if (!Array.isArray(data.productos)) data.productos = [];
+      try { rehidratarFotos(); } catch(e) {}
           (data.productos || []).forEach(p => {
-            if (p.fotos) p.fotos = (p.fotos || []).filter(f =>
-              typeof f === 'string' && f.startsWith('data:image') && f.length > 80 && !f.includes('[truncated]')
-            );
+            if (p.fotos) p.fotos = (p.fotos || []).filter(isValidFoto);
           });
+          try { rehidratarFotos(); } catch(e) {}
           if (!Array.isArray(data.storeCategorias)) data.storeCategorias = [];
           try { ensureStoreCategorias(); } catch(e) {}
           if (!Array.isArray(data.proveedores)) data.proveedores = [];
@@ -3133,7 +3182,16 @@
     function fotoProducto(p) {
       if (!p) return '';
       const arr = (p.fotos || []).filter(isValidFoto);
-      return arr[0] || '';
+      if (arr[0]) return arr[0];
+      if (isValidFoto(p.foto)) return p.foto;
+      if (isValidFoto(p.portada)) return p.portada;
+      if (isValidFoto(p.imagen)) return p.imagen;
+      try {
+        const mid = mediaKey('productos', p.id);
+        const cached = leerMedia(mid);
+        if (isValidFoto(cached)) return cached;
+      } catch(e) {}
+      return '';
     }
     async function previewFotos(event) {
       const files = Array.from(event.target.files || []).slice(0, 5);
@@ -4712,6 +4770,13 @@
                 <button type="button" onclick="abrirLeadEmbajador('${e.id}')" class="text-xs font-semibold border border-gold-200 px-3 py-1.5 rounded-lg">+ Lead / reserva</button>
                 <button type="button" onclick="toggleEmbajador('${e.id}')" class="text-xs border border-gold-200 px-3 py-1.5 rounded-lg">${e.activo===false?'Activar':'Pausar'}</button>
               </div>
+              ${leads.filter(l=>String(l.embajadorId)===String(e.id)).slice(0,8).map(l=>{
+                const pr=(data.lifePropiedades||[]).find(x=>String(x.id)===String(l.propiedadId));
+                return `<div class="mt-2 flex items-center justify-between gap-2 text-xs border-t border-gold-50 pt-2">
+                  <span>${l.nombre||'Lead'} · ${(pr&&(pr.titulo||pr.nombre))||''} · ${l.estado} · S/ ${Number(l.monto||0).toLocaleString()}</span>
+                  <button type="button" onclick="editarLeadEmb('${l.id}')" class="font-semibold text-gold-700">Editar</button>
+                </div>`;
+              }).join('')}
             </div>`;
           }).join(''):'<p class="text-sm text-ink-400">Todavía no hay embajadores. Elige un usuario o suscriptor.</p>'}
         </div>`;
@@ -5528,6 +5593,67 @@ inventario: () => {
         if (currentView === 'life-finanzas' || currentView === 'life-dashboard' || currentView === 'life-propiedades') navigate(currentView);
       } catch(e) {}
     }
+    function parseIcsEvents(ics) {
+      const blocks = String(ics||'').split('BEGIN:VEVENT').slice(1);
+      const evs = [];
+      blocks.forEach(b => {
+        const get = (k) => {
+          const m = b.match(new RegExp(k + '[^:]*:([^\\r\\n]+)'));
+          return m ? m[1].trim() : '';
+        };
+        const rawStart = get('DTSTART');
+        const rawEnd = get('DTEND');
+        const toDay = (s) => {
+          const d = String(s||'').replace(/[^0-9]/g,'').slice(0,8);
+          if (d.length<8) return '';
+          return d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8);
+        };
+        evs.push({
+          summary: get('SUMMARY') || 'Reserva Airbnb',
+          checkIn: toDay(rawStart),
+          checkOut: toDay(rawEnd)
+        });
+      });
+      return evs.filter(e => e.checkIn);
+    }
+    async function sincronizarIcalProp(id) {
+      const p = (data.lifePropiedades||[]).find(x => String(x.id)===String(id));
+      if (!p || !p.icalUrl) { mostrarToast('Primero pega el enlace iCal de Airbnb en la propiedad'); return; }
+      mostrarToast('Sincronizando calendario…');
+      try {
+        const r = await fetch('/api/ical?url=' + encodeURIComponent(p.icalUrl));
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error||'fail');
+        const evs = parseIcsEvents(j.ics);
+        if (!data.lifeReservas) data.lifeReservas = [];
+        let n = 0;
+        evs.forEach(ev => {
+          const exists = data.lifeReservas.some(x => String(x.propiedadId)===String(p.id) && x.checkIn===ev.checkIn && x.origen==='airbnb');
+          if (exists) return;
+          const nights = Math.max(1, Math.round((new Date(ev.checkOut||ev.checkIn) - new Date(ev.checkIn))/86400000));
+          data.lifeReservas.unshift({
+            id: 'LR-ABNB-' + ev.checkIn + '-' + p.id,
+            propiedadId: p.id,
+            huesped: ev.summary,
+            checkIn: ev.checkIn,
+            checkOut: ev.checkOut,
+            noches: nights,
+            total: nights * (Number(p.precioNoche)||0),
+            estado: 'Confirmada',
+            origen: 'airbnb',
+            fecha: new Date().toISOString().slice(0,10)
+          });
+          n++;
+        });
+        p.icalSyncAt = new Date().toISOString();
+        saveSystemData();
+        try { if (typeof cloudPush==='function') cloudPush(); } catch(e) {}
+        mostrarToast(n ? (n + ' reservas nuevas de Airbnb') : 'Calendario al día');
+        verDashboardLifeProp(p.id);
+      } catch (e) {
+        mostrarToast('No se pudo leer el iCal. Revisa el enlace.');
+      }
+    }
     function verDashboardLifeProp(id) {
       ensureLifeData();
       const p = (data.lifePropiedades||[]).find(x => String(x.id)===String(id));
@@ -5588,6 +5714,7 @@ inventario: () => {
               ${k.res.length?`<p class="text-xs font-semibold mt-3">Reservas del sistema</p>`+k.res.map(r=>`<p class="text-xs py-1 border-b border-gold-50">${r.checkIn||''} → ${r.checkOut||''} · ${r.huesped||''} · S/ ${Number(r.total||0).toLocaleString()}</p>`).join(''):''}
             </div>
             <div class="p-4 border-t border-gold-100 flex gap-2">
+              <button type="button" onclick="sincronizarIcalProp('${p.id}')" class="flex-1 border border-gold-200 py-2.5 rounded-xl text-sm font-semibold">Sincronizar Airbnb</button>
               <button type="button" onclick="abrirModalLifeReserva();document.getElementById('modal-life-dash')?.remove()" class="flex-1 btn-gold py-2.5 rounded-xl text-sm font-semibold">Nueva reserva</button>
               <button type="button" onclick="document.getElementById('modal-life-dash')?.remove()" class="flex-1 border border-gold-200 py-2.5 rounded-xl text-sm">Cerrar</button>
             </div>
@@ -5680,6 +5807,7 @@ inventario: () => {
         metaMensual: parseFloat(document.getElementById('life-meta')?.value)||0,
         ownerId: document.getElementById('life-owner')?.value || '',
         ownerNombre: document.getElementById('life-owner-nombre')?.value.trim() || '',
+        icalUrl: document.getElementById('life-ical')?.value.trim() || '',
         ownerEmail: (function(){ const id=document.getElementById('life-owner')?.value; const c=(data.storeClientes||[]).find(x=>String(x.id)===String(id)); return c? (c.email||'') : ''; })(),
         contratoNombre: document.getElementById('life-contrato-nom')?.textContent || '',
         contratoData: window._lifeContratoData || null,
@@ -5728,6 +5856,7 @@ inventario: () => {
       if (document.getElementById('life-gasto-fijo')) document.getElementById('life-gasto-fijo').value = p.gastoFijo || '';
       if (document.getElementById('life-meta')) document.getElementById('life-meta').value = p.metaMensual || '';
       if (document.getElementById('life-owner')) document.getElementById('life-owner').value = p.ownerId || '';
+      if (document.getElementById('life-ical')) document.getElementById('life-ical').value = p.icalUrl || '';
       if (document.getElementById('life-owner-nombre')) document.getElementById('life-owner-nombre').value = p.ownerNombre || '';
       if (document.getElementById('life-contrato-nom')) document.getElementById('life-contrato-nom').textContent = p.contratoNombre || '';
       window._lifeContratoData = p.contratoData || null;
@@ -5742,6 +5871,11 @@ inventario: () => {
       p.publicado = p.publicado === false ? true : false;
       saveSystemData();
       navigate('life-propiedades');
+    }
+    function compartirPropDesdeFicha(propId) {
+      const emb = embajadorDelCliente() || (currentUser && currentUser.esMaster && (data.lifeEmbajadores||[])[0]);
+      if (!emb) { mostrarToast('Activa un embajador para generar el link con tracking'); return; }
+      copiarLinkPropEmb(propId, emb.codigo);
     }
     function verDetalleLifeProp(id, esPublico) {
       if (esPublico === undefined) esPublico = !!window._lifePublicView;
@@ -5781,6 +5915,7 @@ inventario: () => {
               ${p.visitaMensual !== false ? '<p class="text-[10px] text-emerald-700 font-medium">✓ Visita técnica mensual (Property Service)</p>' : ''}
               <div class="flex flex-wrap gap-2 pt-2 border-t border-gold-100">
                 <button type="button" onclick="iniciarReservaLife('${p.id}')" class="btn-gold px-5 py-2.5 rounded-xl text-sm font-semibold flex-1">Reservar noches</button>
+                <button type="button" onclick="compartirPropDesdeFicha('${p.id}')" class="px-4 py-2.5 border border-gold-200 rounded-xl text-sm font-semibold">Compartir</button>
                 ${esPublico ? '' : `
                 <button type="button" onclick="editarLifeProp('${p.id}');document.getElementById('modal-life-detalle').remove()" class="px-4 py-2.5 border border-gold-200 rounded-xl text-sm">Editar</button>
                 <button type="button" onclick="crearLeadMantenimientoLife('${p.id}')" class="px-4 py-2.5 border border-amber-300 bg-amber-50 text-amber-900 rounded-xl text-sm font-semibold">→ Lead mantenimiento</button>
@@ -6099,6 +6234,85 @@ inventario: () => {
         (cli.email && (e.email||'').toLowerCase()===(cli.email||'').toLowerCase()) ||
         (cli.nombre && normNombre(e.nombre)===normNombre(cli.nombre))
       );
+    }
+    function linkPropiedadEmbajador(propId, codigo) {
+      const base = (location.origin && location.origin.indexOf('http')===0) ? location.origin : 'https://flyuhouse-sistem.vercel.app';
+      return base + '/?bnb=' + encodeURIComponent(propId) + '&ref=' + encodeURIComponent(codigo||'');
+    }
+    function copiarLinkPropEmb(propId, codigo) {
+      const url = linkPropiedadEmbajador(propId, codigo);
+      const txt = 'Te comparto esta propiedad FLYHOUSE B&B Life\n' + url;
+      navigator.clipboard.writeText(txt).then(()=>mostrarToast('Link copiado')).catch(()=>prompt('Copia el link', url));
+    }
+    function registrarClickEmbajador(propId, codigo) {
+      ensureLifeData();
+      const emb = (data.lifeEmbajadores||[]).find(e => String(e.codigo).toUpperCase()===String(codigo||'').toUpperCase());
+      if (!emb) return null;
+      emb.clicks = (Number(emb.clicks)||0) + 1;
+      const ya = (data.lifeLeads||[]).find(l => l.embajadorId===emb.id && String(l.propiedadId)===String(propId) && l.origen==='link' && (l.fecha||'')===new Date().toISOString().slice(0,10));
+      if (!ya) {
+        data.lifeLeads.unshift({
+          id: 'LL-' + Date.now().toString(36),
+          propiedadId: propId,
+          nombre: 'Visita por link',
+          monto: 0,
+          estado: 'Pendiente',
+          embajadorId: emb.id,
+          origen: 'link',
+          fecha: new Date().toISOString().slice(0,10),
+          creado: new Date().toISOString()
+        });
+      }
+      try { saveSystemData(); } catch(e) {}
+      try { if (typeof cloudPush==='function') cloudPush(); } catch(e) {}
+      return emb;
+    }
+    function editarLeadEmb(id) {
+      const l = (data.lifeLeads||[]).find(x => String(x.id)===String(id));
+      if (!l) return;
+      document.getElementById('modal-emb')?.remove();
+      const el = document.createElement('div');
+      el.id = 'modal-emb';
+      el.className = 'fixed inset-0 z-[97]';
+      el.innerHTML = `<div class="absolute inset-0 bg-ink-900/50" onclick="this.parentElement.remove()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl w-full max-w-md p-5 border border-gold-200 space-y-2">
+            <h3 class="font-bold">Editar lead</h3>
+            <input id="el-nom" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" value="${(l.nombre||'').replace(/"/g,'&quot;')}">
+            <input id="el-monto" type="number" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl" value="${l.monto||0}">
+            <select id="el-est" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl">
+              <option ${l.estado==='Pendiente'?'selected':''}>Pendiente</option>
+              <option ${l.estado==='Convertido'?'selected':''}>Convertido</option>
+              <option ${l.estado==='Descartado'?'selected':''}>Descartado</option>
+            </select>
+            <div class="flex gap-2">
+              <button type="button" onclick="guardarEditLeadEmb('${l.id}')" class="flex-1 btn-gold py-2.5 rounded-xl text-sm font-semibold">Guardar</button>
+              <button type="button" onclick="eliminarLeadEmb('${l.id}')" class="flex-1 border border-red-200 text-red-600 py-2.5 rounded-xl text-sm">Eliminar</button>
+            </div>
+          </div></div>`;
+      document.body.appendChild(el);
+    }
+    function guardarEditLeadEmb(id) {
+      pedirPin('Editar lead', 'PIN master', () => {
+        const l = (data.lifeLeads||[]).find(x => String(x.id)===String(id));
+        if (!l) return;
+        l.nombre = document.getElementById('el-nom')?.value.trim() || l.nombre;
+        l.monto = parseFloat(document.getElementById('el-monto')?.value)||0;
+        l.estado = document.getElementById('el-est')?.value || l.estado;
+        saveSystemData();
+        document.getElementById('modal-emb')?.remove();
+        navigate('life-embajadores');
+        mostrarToast('Lead actualizado');
+      });
+    }
+    function eliminarLeadEmb(id) {
+      pedirPin('Eliminar lead', 'PIN master para borrar este lead de prueba', () => {
+        data.lifeLeads = (data.lifeLeads||[]).filter(x => String(x.id)!==String(id));
+        saveSystemData();
+        document.getElementById('modal-emb')?.remove();
+        navigate('life-embajadores');
+        mostrarToast('Lead eliminado');
+      });
     }
     function abrirModalLifeReserva() {
       ensureLifeData();
@@ -7603,6 +7817,19 @@ inventario: () => {
         const q = params.get('pres');
         const packTok = params.get('pack');
         const rentalMode = params.get('rental') === '1' || location.pathname === '/r' || location.pathname.endsWith('/r');
+        const bnbId = params.get('bnb');
+        const refCode = params.get('ref');
+        if (bnbId) {
+          window._fhBnbRef = refCode || '';
+          setTimeout(() => {
+            try {
+              document.getElementById('landing-screen')?.classList.add('hidden');
+              document.getElementById('login-screen')?.classList.add('hidden');
+              if (refCode) registrarClickEmbajador(bnbId, refCode);
+              verDetalleLifeProp(bnbId, true);
+            } catch(e) {}
+          }, 600);
+        }
         if (rentalMode && !q && !packTok) {
           window._fhClientPresMode = true;
           try {
@@ -9045,12 +9272,23 @@ inventario: () => {
               <h2 class="text-2xl font-bold mt-1">${e.nombre}</h2>
               <p class="text-white/60 text-sm mt-1">Código ${e.codigo} · ${e.comisionPct||10}% de recompensa</p>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-2 gap-3 mb-4">
               <div class="card-premium rounded-2xl p-4"><p class="text-[10px] uppercase text-ink-400">Leads</p><p class="text-2xl font-bold">${k.leads}</p></div>
               <div class="card-premium rounded-2xl p-4"><p class="text-[10px] uppercase text-ink-400">Reservas</p><p class="text-2xl font-bold">${k.reservas}</p></div>
               <div class="card-premium rounded-2xl p-4"><p class="text-[10px] uppercase text-ink-400">Generado</p><p class="text-2xl font-bold">S/ ${Math.round(k.generado).toLocaleString()}</p></div>
               <div class="card-premium rounded-2xl p-4"><p class="text-[10px] uppercase text-ink-400">Tu premio</p><p class="text-2xl font-bold text-emerald-700">S/ ${Math.round(k.premio).toLocaleString()}</p></div>
-            </div>`;
+            </div>
+            <p class="text-xs font-semibold mb-2">Comparte propiedades (tu código va en el link)</p>
+            ${(data.lifePropiedades||[]).filter(p=>!p.oculto && p.publicado!==false).map(pr => `
+              <div class="card-premium rounded-xl p-3 mb-2 flex items-center justify-between gap-2">
+                <div><p class="text-sm font-bold">${pr.titulo||pr.nombre||''}</p><p class="text-[10px] text-ink-400">${pr.distrito||''}</p></div>
+                <button type="button" onclick="copiarLinkPropEmb('${pr.id}','${e.codigo}')" class="text-xs font-semibold btn-gold px-3 py-2 rounded-xl">Copiar link</button>
+              </div>`).join('') || '<p class="text-xs text-ink-400">Aún no hay propiedades publicadas</p>'}
+            <p class="text-xs font-semibold mt-4 mb-2">Tus leads</p>
+            ${(data.lifeLeads||[]).filter(l=>String(l.embajadorId)===String(e.id)).map(l=>{
+              const pr=(data.lifePropiedades||[]).find(x=>String(x.id)===String(l.propiedadId));
+              return `<p class="text-xs py-1.5 border-b border-gold-50">${l.fecha||''} · ${l.nombre} · ${(pr&&(pr.titulo||pr.nombre))||''} · ${l.estado}</p>`;
+            }).join('') || '<p class="text-xs text-ink-400">Cuando alguien abra tu link, aparece aquí.</p>'}`;
         }
       } else if (tab === 'chat') {
         if (!data.soporteMensajes) data.soporteMensajes = [];
@@ -14167,6 +14405,11 @@ inventario: () => {
               <label class="form-label">Meta mensual (S/)</label>
               <input id="life-meta" type="number" min="0" step="0.01" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl bg-cream-50">
             </div>
+          </div>
+          <div>
+            <label class="form-label">Calendario Airbnb (enlace iCal)</label>
+            <input id="life-ical" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl bg-cream-50" placeholder="https://www.airbnb.com/calendar/ical/....ics">
+            <p class="text-[10px] text-ink-400 mt-1">Airbnb → Anuncio → Disponibilidad → Exportar calendario. Pegamos el enlace para traer reservas.</p>
           </div>
           <div>
             <label class="form-label">Propietario / usuario plataforma</label>
