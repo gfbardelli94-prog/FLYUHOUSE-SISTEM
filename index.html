@@ -199,6 +199,7 @@
           </div>
         </div>
         <div class="flex items-center gap-2">
+          <button type="button" onclick="abrirLandingEmbajadores()" class="hidden sm:inline-flex px-4 py-2 text-sm rounded-xl border border-gold-500/40 text-gold-400 hover:bg-gold-500/10">Embajadores</button>
           <button type="button" onclick="abrirAuthCliente('login')" class="hidden sm:inline-flex px-4 py-2 text-sm rounded-xl border border-white/20 hover:bg-white/5">Ingresar</button>
           <button type="button" onclick="abrirAuthCliente('reg')" class="px-4 py-2 text-sm font-semibold rounded-xl text-ink-900" style="background:linear-gradient(135deg,#D4AF37,#C9A227)">Crear cuenta</button>
         </div>
@@ -214,6 +215,7 @@
         <div class="mt-8 flex flex-wrap gap-3">
           <button type="button" onclick="abrirAuthCliente('reg')" class="px-6 py-3.5 rounded-xl font-semibold text-ink-900" style="background:linear-gradient(135deg,#D4AF37,#C9A227)">Quiero mi cuenta</button>
           <button type="button" onclick="abrirAuthCliente('login')" class="px-6 py-3.5 rounded-xl font-semibold border border-white/25 hover:bg-white/10">Ya soy cliente</button>
+          <button type="button" onclick="abrirLandingEmbajadores()" class="px-6 py-3.5 rounded-xl font-semibold border border-gold-500/50 text-gold-400 hover:bg-gold-500/10">Gana con FLYHOUSE</button>
         </div>
       </div>
     </section>
@@ -250,6 +252,43 @@
           <p class="text-white font-semibold">Entra al sistema operativo interno.</p>
         </div>
         <button type="button" onclick="abrirLoginEquipo()" class="px-5 py-3 rounded-xl text-sm font-semibold border border-gold-500/50 text-gold-400 hover:bg-gold-500/10">Solo miembros del equipo</button>
+      </div>
+    </section>
+  </div>
+
+
+  <div id="landing-embajadores" class="hidden fixed inset-0 z-[100] overflow-y-auto bg-[#0a0a0b] text-white">
+    <header class="sticky top-0 z-20 backdrop-blur-md bg-black/50 border-b border-white/10">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <p class="font-bold tracking-wide">FLYHOUSE <span class="text-gold-400 font-normal">Embajadores</span></p>
+        <button type="button" onclick="cerrarLandingEmbajadores()" class="text-sm text-white/60 hover:text-white">Volver</button>
+      </div>
+    </header>
+    <section class="relative min-h-[70vh] flex items-end">
+      <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1800&q=70" class="absolute inset-0 w-full h-full object-cover" alt="">
+      <div class="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/20"></div>
+      <div class="relative max-w-6xl mx-auto px-4 pb-14 pt-24">
+        <p class="text-gold-400 text-[11px] tracking-[0.3em] uppercase mb-3">Fuerza de ventas · propiedades exclusivas</p>
+        <h2 class="text-4xl sm:text-5xl font-bold max-w-3xl leading-tight">Mueve nuestro catálogo.<br>Gana un porcentaje por cada cierre.</h2>
+        <p class="mt-4 text-white/70 max-w-xl">Comparte propiedades FLYHOUSE B&amp;B Life con tu red. Cada lead llega trackeado a tu nombre. Si cierra, cobras tu recompensa.</p>
+      </div>
+    </section>
+    <section class="max-w-6xl mx-auto px-4 py-12 grid lg:grid-cols-2 gap-8">
+      <div>
+        <p class="text-gold-400 text-[10px] uppercase tracking-wider mb-3">Propiedades exclusivas ahora</p>
+        <div id="emb-land-props" class="grid sm:grid-cols-2 gap-3"></div>
+      </div>
+      <div class="rounded-2xl border border-gold-500/30 bg-white text-ink-800 p-5 h-fit">
+        <p class="text-[10px] uppercase tracking-wider text-ink-400">Postula a embajador</p>
+        <h3 class="font-bold text-xl mt-1">Regístrate. Te contactamos.</h3>
+        <p class="text-sm text-ink-500 mt-1 mb-4">Filtramos perfiles y, si calificas, te activamos usuario + catálogo con links trackeados.</p>
+        <input id="embreg-nombre" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl mb-2" placeholder="Nombre completo">
+        <input id="embreg-email" type="email" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl mb-2" placeholder="Correo">
+        <input id="embreg-tel" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl mb-2" placeholder="WhatsApp">
+        <input id="embreg-ciudad" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl mb-2" placeholder="Ciudad">
+        <textarea id="embreg-red" rows="3" class="w-full px-3 py-2.5 text-sm border border-gold-200 rounded-xl mb-3" placeholder="¿Cómo moverías las propiedades? (red, zona, experiencia)"></textarea>
+        <button type="button" onclick="registrarProspectoEmbajador()" class="w-full btn-gold py-3 rounded-xl text-sm font-semibold">Quiero ser embajador</button>
+        <p class="text-[10px] text-ink-400 mt-2">Al enviar, tu ficha llega a Embajadores FLYHOUSE para filtro y contacto.</p>
       </div>
     </section>
   </div>
@@ -300,6 +339,7 @@
         <nav class="flex-1 p-2 space-y-0.5 overflow-y-auto">
           <button type="button" onclick="setPortalTab('home')" data-ptab="home" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Inicio</button>
           <button type="button" onclick="setPortalTab('pres')" data-ptab="pres" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center justify-between gap-2">Presupuestos <span id="badge-portal-pres" class="nav-badge hidden">0</span></button>
+          <button type="button" onclick="setPortalTab('obras')" data-ptab="obras" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Mis obras</button>
           <button type="button" onclick="setPortalTab('store')" data-ptab="store" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Store</button>
           <button type="button" onclick="setPortalTab('rental')" data-ptab="rental" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">Rental</button>
           <button type="button" onclick="setPortalTab('life')" data-ptab="life" class="ptab w-full text-left px-3 py-2.5 rounded-lg text-sm">B&amp;B Life</button>
@@ -2136,9 +2176,52 @@
       };
     }
 
+    function persistVoiceVault() {
+      try {
+        const phrase = normalizeVoice(localStorage.getItem('fh_voice_phrase') || (typeof SECURITY!=='undefined' && SECURITY.voicePhrase) || '');
+        if (!data.securityVault) data.securityVault = {};
+        if (phrase) {
+          data.securityVault.voicePhrase = phrase;
+          localStorage.setItem('fh_voice_phrase', phrase);
+        }
+        (data.usuarios||[]).forEach(u => {
+          if (u && u.voicePhrase) {
+            localStorage.setItem('fh_voice_u_'+u.id, normalizeVoice(u.voicePhrase));
+          }
+        });
+      } catch(e) {}
+    }
+    function restoreVoiceVault() {
+      try {
+        if (!data.securityVault) data.securityVault = {};
+        let phrase = normalizeVoice(localStorage.getItem('fh_voice_phrase') || data.securityVault.voicePhrase || '');
+        if (!phrase && data.securityVault.voicePhrase) phrase = normalizeVoice(data.securityVault.voicePhrase);
+        if (phrase) {
+          data.securityVault.voicePhrase = phrase;
+          localStorage.setItem('fh_voice_phrase', phrase);
+          try { SECURITY.voicePhrase = phrase; } catch(e) {}
+        }
+        (data.usuarios||[]).forEach(u => {
+          if (!u) return;
+          const saved = localStorage.getItem('fh_voice_u_'+u.id);
+          if (!u.voicePhrase && saved) u.voicePhrase = saved;
+          if (u.voicePhrase) localStorage.setItem('fh_voice_u_'+u.id, normalizeVoice(u.voicePhrase));
+          if (u.esMaster && u.voicePhrase && !phrase) {
+            phrase = normalizeVoice(u.voicePhrase);
+            localStorage.setItem('fh_voice_phrase', phrase);
+            data.securityVault.voicePhrase = phrase;
+            try { SECURITY.voicePhrase = phrase; } catch(e) {}
+          }
+        });
+      } catch(e) {}
+    }
     function applyPersistPayload(payload) {
       if (!payload || !payload.data) return false;
+      const prevUsers = (data.usuarios || []).slice();
+      const prevVault = data.securityVault || {};
       data = Object.assign(data, payload.data);
+      if (!data.securityVault) data.securityVault = prevVault;
+      else data.securityVault = Object.assign({}, prevVault, data.securityVault);
       if (payload.nextProductId) nextProductId = payload.nextProductId;
       if (!Array.isArray(data.requerimientos)) data.requerimientos = [];
       if (!Array.isArray(data.contratos)) data.contratos = [];
@@ -2150,6 +2233,19 @@
       if (!data.nextPresupuestoId) data.nextPresupuestoId = 1;
       if (!data.vistosAlertas || typeof data.vistosAlertas !== 'object') data.vistosAlertas = {};
       if (!Array.isArray(data.usuarios)) data.usuarios = [];
+      try {
+        const prevMap = {};
+        (typeof prevUsers!=='undefined'?prevUsers:[]).forEach(u => { if (u) prevMap[String(u.id)] = u; });
+        data.usuarios = data.usuarios.map(u => {
+          const old = prevMap[String(u.id)];
+          if (!old) return u;
+          if (!u.voicePhrase && old.voicePhrase) u.voicePhrase = old.voicePhrase;
+          if (!u.pin && old.pin) u.pin = old.pin;
+          if ((!u.permisos || !u.permisos.length) && old.permisos) u.permisos = old.permisos;
+          return u;
+        });
+        restoreVoiceVault();
+      } catch(e) {}
       if (!Array.isArray(data.productos)) data.productos = [];
       try { rehidratarFotos(); } catch(e) {}
       if (!Array.isArray(data.storeCategorias)) data.storeCategorias = [];
@@ -2213,10 +2309,13 @@
             data.storeClientes = mergeById(data.storeClientes, remote.storeClientes);
             data.soporteMensajes = mergeById(data.soporteMensajes, remote.soporteMensajes);
             data.presupuestos = mergeById(data.presupuestos, remote.presupuestos);
+            data.requerimientos = mergeById(data.requerimientos, remote.requerimientos);
+            data.contratos = mergeById(data.contratos, remote.contratos);
             data.lifePropiedades = mergeById(data.lifePropiedades, remote.lifePropiedades);
             data.lifeReservas = mergeById(data.lifeReservas, remote.lifeReservas);
             data.lifeEmbajadores = mergeById(data.lifeEmbajadores, remote.lifeEmbajadores);
             data.lifeLeads = mergeById(data.lifeLeads, remote.lifeLeads);
+            data.lifeProspectosEmb = mergeById(data.lifeProspectosEmb, remote.lifeProspectosEmb);
           }
         } catch (e) {}
         const payload = buildPersistPayload();
@@ -2401,6 +2500,7 @@
           nextProductId: nextProductId,
           savedAt: new Date().toISOString()
         };
+        try { persistVoiceVault(); } catch(e) {}
         try { snapshotFotosAMedia(); } catch(e) {}
         localStorage.setItem(DATA_KEY, JSON.stringify(payload));
         localStorage.setItem(META_KEY, JSON.stringify({ savedAt: payload.savedAt, productos: (data.productos||[]).length, proveedores: (data.proveedores||[]).length }));
@@ -2482,6 +2582,7 @@
             if (p.fotos) p.fotos = (p.fotos || []).filter(isValidFoto);
           });
           try { rehidratarFotos(); } catch(e) {}
+          try { restoreVoiceVault(); } catch(e) {}
           if (!Array.isArray(data.storeCategorias)) data.storeCategorias = [];
           try { ensureStoreCategorias(); } catch(e) {}
           if (!Array.isArray(data.proveedores)) data.proveedores = [];
@@ -4747,6 +4848,19 @@
               <p class="text-xs text-ink-500">Usuarios que mueven propiedades exclusivas · track de leads y reservas</p></div>
             <button type="button" onclick="abrirAltaEmbajador()" class="btn-gold px-4 py-2.5 rounded-xl text-sm font-semibold">+ Embajador</button>
           </div>
+          ${((data.lifeProspectosEmb||[]).filter(x=>x.estado!=='Aprobado').length)?`
+          <div class="card-premium rounded-2xl p-4">
+            <p class="text-xs font-semibold mb-2">Prospectos del landing (${(data.lifeProspectosEmb||[]).filter(x=>x.estado!=='Aprobado').length})</p>
+            ${(data.lifeProspectosEmb||[]).filter(x=>x.estado!=='Aprobado').map(pe=>`
+              <div class="flex flex-wrap items-center justify-between gap-2 py-2 border-b border-gold-50 text-sm">
+                <div><p class="font-semibold">${pe.nombre}</p><p class="text-[11px] text-ink-500">${pe.email} · ${pe.tel} · ${pe.ciudad||''}</p>
+                <p class="text-[11px] text-ink-400">${pe.red||''}</p></div>
+                <div class="flex gap-2">
+                  <button type="button" onclick="aprobarProspectoEmb('${pe.id}')" class="text-xs font-semibold btn-gold px-3 py-1.5 rounded-lg">Aprobar</button>
+                  <button type="button" onclick="pedirPin('Descartar','PIN',()=>{const x=(data.lifeProspectosEmb||[]).find(i=>i.id==='${pe.id}'); if(x) x.estado='Descartado'; saveSystemData(); navigate('life-embajadores');})" class="text-xs border border-gold-200 px-3 py-1.5 rounded-lg">Descartar</button>
+                </div>
+              </div>`).join('')}
+          </div>`:''}
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div class="card-premium rounded-xl p-4"><p class="text-[10px] uppercase text-ink-400">Embajadores</p><p class="text-2xl font-bold">${embs.length}</p></div>
             <div class="card-premium rounded-xl p-4"><p class="text-[10px] uppercase text-ink-400">Leads</p><p class="text-2xl font-bold">${leads.length}</p></div>
@@ -6235,6 +6349,69 @@ inventario: () => {
         (cli.nombre && normNombre(e.nombre)===normNombre(cli.nombre))
       );
     }
+    function abrirLandingEmbajadores() {
+      ensureLifeData();
+      document.getElementById('landing-embajadores')?.classList.remove('hidden');
+      const box = document.getElementById('emb-land-props');
+      if (box) {
+        const props = (data.lifePropiedades||[]).filter(p => !p.oculto && p.publicado !== false);
+        box.innerHTML = props.length ? props.map(pr => {
+          const foto = (pr.fotos&&pr.fotos[0])||'';
+          return `<div class="rounded-xl overflow-hidden border border-white/10 bg-white/5">
+            <div class="h-28 bg-ink-800">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:''}</div>
+            <div class="p-3"><p class="text-sm font-bold">${pr.titulo||pr.nombre||''}</p>
+            <p class="text-[11px] text-white/50">${pr.distrito||''} · S/ ${Number(pr.precioNoche||0).toLocaleString()} / noche</p></div></div>`;
+        }).join('') : '<p class="text-sm text-white/50">Pronto verás el catálogo exclusivo.</p>';
+      }
+    }
+    function cerrarLandingEmbajadores() {
+      document.getElementById('landing-embajadores')?.classList.add('hidden');
+    }
+    function registrarProspectoEmbajador() {
+      ensureLifeData();
+      const nombre = document.getElementById('embreg-nombre')?.value.trim();
+      const email = document.getElementById('embreg-email')?.value.trim();
+      const tel = document.getElementById('embreg-tel')?.value.trim();
+      const ciudad = document.getElementById('embreg-ciudad')?.value.trim();
+      const red = document.getElementById('embreg-red')?.value.trim();
+      if (!nombre || !email || !tel) { mostrarToast('Completa nombre, correo y WhatsApp'); return; }
+      data.lifeProspectosEmb.unshift({
+        id: 'PE-' + Date.now().toString(36),
+        nombre, email, tel, ciudad, red,
+        estado: 'Nuevo',
+        fecha: new Date().toISOString().slice(0,10)
+      });
+      try { saveSystemData(); } catch(e) {}
+      try { if (typeof cloudPush==='function') cloudPush(); } catch(e) {}
+      mostrarToast('Registro enviado. El equipo te contactará.');
+      document.getElementById('embreg-nombre').value='';
+      document.getElementById('embreg-email').value='';
+      document.getElementById('embreg-tel').value='';
+      document.getElementById('embreg-ciudad').value='';
+      document.getElementById('embreg-red').value='';
+    }
+    function aprobarProspectoEmb(id) {
+      pedirPin('Activar embajador', 'PIN master', () => {
+        const pe = (data.lifeProspectosEmb||[]).find(x => String(x.id)===String(id));
+        if (!pe) return;
+        pe.estado = 'Aprobado';
+        const codigo = 'FH-' + (pe.nombre||'EMB').split(' ')[0].toUpperCase().slice(0,6) + Math.floor(Math.random()*90+10);
+        data.lifeEmbajadores.push({
+          id: 'EMB-' + Date.now().toString(36),
+          refTipo: 'prospecto', refId: pe.id,
+          nombre: pe.nombre, email: pe.email, tel: pe.tel,
+          codigo, comisionPct: 10, activo: true,
+          creado: new Date().toISOString().slice(0,10)
+        });
+        if (!data.storeClientes) data.storeClientes = [];
+        if (!(data.storeClientes||[]).some(c => (c.email||'').toLowerCase()===pe.email.toLowerCase())) {
+          data.storeClientes.unshift({ id: 'SC-'+Date.now(), nombre: pe.nombre, email: pe.email, telefono: pe.tel, pass: '1212', creado: new Date().toISOString().slice(0,10) });
+        }
+        saveSystemData();
+        navigate('life-embajadores');
+        mostrarToast('Embajador activado · ' + codigo);
+      });
+    }
     function linkPropiedadEmbajador(propId, codigo) {
       const base = (location.origin && location.origin.indexOf('http')===0) ? location.origin : 'https://flyuhouse-sistem.vercel.app';
       return base + '/?bnb=' + encodeURIComponent(propId) + '&ref=' + encodeURIComponent(codigo||'');
@@ -6378,6 +6555,7 @@ inventario: () => {
       if (!data.nextLifeResId) data.nextLifeResId = 1;
       if (!data.lifeEmbajadores) data.lifeEmbajadores = [];
       if (!data.lifeLeads) data.lifeLeads = [];
+      if (!data.lifeProspectosEmb) data.lifeProspectosEmb = [];
     }
 
 
@@ -7754,6 +7932,7 @@ inventario: () => {
             id: reqId,
             titulo: p.titulo || ('Desde presupuesto ' + p.id),
             cliente: p.cliente || '',
+            clienteId: p.clienteId || '',
             lugar: p.lugar || '',
             monto: p.total || 0,
             estado: 'Pendiente',
@@ -7761,10 +7940,10 @@ inventario: () => {
             fecha: new Date().toISOString().slice(0, 10),
             fechaCreacion: new Date().toISOString().slice(0, 10),
             origenPresupuestoId: p.id,
-            origen: 'presupuesto',
+            origen: 'presupuesto-aceptado',
             fotoAntes: p.fotoAntes || null,
             fotoDespues: p.fotoDespues || null,
-            observaciones: 'Generado desde presupuesto aceptado por el cliente · S/ ' + Number(p.total||0).toLocaleString(),
+            observaciones: 'Cliente aceptó presupuesto ' + p.id + ' · S/ ' + Number(p.total||0).toLocaleString(),
             items: [{
               id: reqId + '-a',
               area: 'General',
@@ -7777,13 +7956,51 @@ inventario: () => {
           data.requerimientos.unshift(req);
           p.reqId = reqId;
         }
+        if (!data.contratos) data.contratos = [];
+        let ct = data.contratos.find(c => String(c.origenPresupuestoId)===String(p.id) && !c.oculto);
+        if (!ct) {
+          const n = (data.contratos.filter(c => !c.oculto).length + 1).toString().padStart(3,'0');
+          const genId = 'CT-' + new Date().getFullYear() + '-' + n;
+          ct = {
+            id: genId,
+            tipo: 'general',
+            cliente: p.cliente || '',
+            clienteId: p.clienteId || '',
+            propiedad: p.titulo || p.lugar || 'Proyecto',
+            direccion: p.lugar || '',
+            valor: Number(p.total)||0,
+            costo: 0,
+            moneda: p.moneda || 'PEN',
+            etapa: 'Por iniciar',
+            avance: 5,
+            responsable: 'Coordinación FLYHOUSE',
+            fechaInicio: new Date().toISOString().slice(0,10),
+            fechaFin: '-',
+            notas: 'Aceptado por el cliente desde su portal',
+            equipo: [],
+            pagos: [],
+            seguimientos: [{ fecha: new Date().toISOString().slice(0,10), texto: 'Cliente aceptó presupuesto ' + p.id, autor: p.cliente || 'Cliente' }],
+            documentos: [],
+            origenPresupuestoId: p.id,
+            desdeRequerimiento: p.reqId || (req && req.id)
+          };
+          data.contratos.unshift(ct);
+          p.contratoId = genId;
+          if (req) { req.contratoId = genId; req.contratoGeneralId = genId; }
+        }
         saveSystemData();
+        try { if (typeof cloudPush==='function') cloudPush(); } catch(e) {}
         cerrarVistaClientePres();
-        alert('¡Gracias! Tu propuesta fue aceptada. Un asesor FLYHOUSE te contactará pronto.');
+        mostrarToast('Propuesta aceptada · obra ' + (p.contratoId||'') + ' creada');
+        try {
+          if (document.getElementById('client-portal') && !document.getElementById('client-portal').classList.contains('hidden')) {
+            setPortalTab('obras');
+          }
+        } catch(e) {}
         if (document.getElementById('app-shell') && !document.getElementById('app-shell').classList.contains('hidden')) {
           if (typeof actualizarBadges === 'function') actualizarBadges();
           navigate('requerimientos');
-          mostrarToast('Requerimiento ' + (p.reqId || '') + ' creado desde presupuesto');
+          mostrarToast('Requerimiento y contrato creados');
         }
       } else if (accion === 'consultar') {
         p.estado = 'Consultado';
@@ -7817,6 +8034,9 @@ inventario: () => {
         const q = params.get('pres');
         const packTok = params.get('pack');
         const rentalMode = params.get('rental') === '1' || location.pathname === '/r' || location.pathname.endsWith('/r');
+        if (params.get('emb') === '1' || location.pathname.endsWith('/embajadores')) {
+          setTimeout(() => { try { abrirLandingEmbajadores(); } catch(e) {} }, 400);
+        }
         const bnbId = params.get('bnb');
         const refCode = params.get('ref');
         if (bnbId) {
@@ -8253,7 +8473,8 @@ inventario: () => {
 
     // ===== VOZ: palabra clave =====
     function loadVoicePhrase() {
-      SECURITY.voicePhrase = (localStorage.getItem('fh_voice_phrase') || '').toLowerCase().trim();
+      SECURITY.voicePhrase = normalizeVoice(localStorage.getItem('fh_voice_phrase') || (data.securityVault && data.securityVault.voicePhrase) || SECURITY.voicePhrase || '');
+      if (SECURITY.voicePhrase) localStorage.setItem('fh_voice_phrase', SECURITY.voicePhrase);
       return SECURITY.voicePhrase;
     }
     loadVoicePhrase();
@@ -8279,6 +8500,7 @@ inventario: () => {
       }
       SECURITY.voicePhrase = phrase;
       localStorage.setItem('fh_voice_phrase', phrase);
+      try { persistVoiceVault(); saveSystemData(); } catch(e) {}
       // verificar que quedó grabado
       const check = localStorage.getItem('fh_voice_phrase');
       if (check !== phrase) {
@@ -8304,6 +8526,7 @@ inventario: () => {
         document.getElementById('voz-phrase-input').value = phrase;
         SECURITY.voicePhrase = phrase;
         localStorage.setItem('fh_voice_phrase', phrase);
+        try { persistVoiceVault(); saveSystemData(); } catch(e) {}
         document.getElementById('voz-status').textContent = '✓ Grabada y guardada. Ahora prueba el reconocimiento.';
         document.getElementById('voz-status').className = 'text-xs text-emerald-600 mb-3 min-h-[16px]';
         mostrarToast('Voz registrada y guardada');
@@ -8798,8 +9021,9 @@ inventario: () => {
         document.getElementById('login-status').className = 'text-sm text-amber-400 min-h-[28px]';
         return;
       }
+      try { restoreVoiceVault(); } catch(e) {}
       loadVoicePhrase();
-      let stored = normalizeVoice(localStorage.getItem('fh_voice_phrase') || SECURITY.voicePhrase || '');
+      let stored = normalizeVoice(localStorage.getItem('fh_voice_phrase') || (data.securityVault&&data.securityVault.voicePhrase) || SECURITY.voicePhrase || '');
       if (!currentUser.esMaster && currentUser.voicePhrase) {
         stored = normalizeVoice(currentUser.voicePhrase);
       }
@@ -9187,6 +9411,26 @@ inventario: () => {
           }).join('') : `<p class="col-span-full text-ink-500">Aún no tienes presupuestos en tu bandeja.</p>`) + `</div>`;
       } else if (tab === 'mias') {
         renderPortalMias(box);
+      } else if (tab === 'obras') {
+        const cli = storeCliente || {};
+        const nom = normNombre(cli.nombre);
+        const obras = (data.contratos||[]).filter(c => !c.oculto && (
+          (cli.id && String(c.clienteId)===String(cli.id)) ||
+          (nom && normNombre(c.cliente)===nom) ||
+          (nom && normNombre(c.cliente).includes(nom))
+        ));
+        box.innerHTML = `<h2 class="text-xl font-bold mb-1">Mis obras</h2>
+          <p class="text-sm text-ink-500 mb-4">Etapa de cada proyecto que aceptaste.</p>` +
+          (obras.length ? obras.map(c => `
+            <div class="card-premium rounded-2xl p-4 mb-3">
+              <div class="flex justify-between gap-2">
+                <div><p class="font-bold">${c.propiedad||c.id}</p><p class="text-xs text-ink-500">${c.id} · S/ ${Number(c.valor||0).toLocaleString()}</p></div>
+                <span class="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-gold-50 text-gold-700">${c.etapa||''}</span>
+              </div>
+              <div class="h-2 rounded-full bg-ink-100 mt-3"><div class="h-2 rounded-full bg-gold-500" style="width:${Math.min(100,Number(c.avance)||0)}%"></div></div>
+              <p class="text-[11px] text-ink-400 mt-1">Avance ${Number(c.avance)||0}%</p>
+              ${(c.seguimientos||[]).slice(0,3).map(s=>`<p class="text-xs text-ink-600 mt-1">${s.fecha||''} · ${s.texto||''}</p>`).join('')}
+            </div>`).join('') : '<p class="text-sm text-ink-500">Cuando aceptes un presupuesto, aquí verás la etapa de tu obra.</p>');
       } else if (tab === 'store') {
         registrarActividadCliente('abrió Store');
         abrirVistaCliente();
