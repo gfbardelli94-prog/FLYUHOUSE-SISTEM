@@ -427,6 +427,7 @@
               <p class="text-[9px] text-ink-500 uppercase tracking-wider">Área activa</p>
               <p id="area-label" class="text-xs font-semibold text-gold-400 truncate">Property Service</p>
               <p id="cloud-status" class="text-[10px] text-ink-500 mt-0.5">Nube…</p>
+              <button type="button" onclick="event.stopPropagation();abrirConfigCloudinary()" class="text-[10px] text-gold-500 hover:underline">Fotos · Cloudinary</button>
             </div>
             <i data-lucide="chevrons-up-down" class="w-3.5 h-3.5 text-ink-500 flex-shrink-0"></i>
           </button>
@@ -3328,6 +3329,64 @@
       document.body.style.overflow = '';
     }
 
+    function getCdn() {
+      try { return JSON.parse(localStorage.getItem('fh_cloudinary')||'{}') || {}; } catch(e) { return {}; }
+    }
+    function setCdn(cloud, preset) {
+      localStorage.setItem('fh_cloudinary', JSON.stringify({ cloud: (cloud||'').trim(), preset: (preset||'').trim() }));
+    }
+    function abrirConfigCloudinary() {
+      if (!(currentUser && currentUser.esMaster)) { mostrarToast('Solo Master configura Cloudinary'); return; }
+      const c = getCdn();
+      document.getElementById('modal-cdn')?.remove();
+      const el = document.createElement('div');
+      el.id = 'modal-cdn';
+      el.className = 'fixed inset-0 z-[120]';
+      el.innerHTML = `<div class="absolute inset-0 bg-ink-900/50" onclick="this.parentElement.remove()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl w-full max-w-md p-5 border border-gold-200 space-y-3">
+            <h3 class="font-bold">Cloudinary · fotos en la nube</h3>
+            <p class="text-xs text-ink-500">Crea cuenta gratis en cloudinary.com → Settings → Upload → Upload preset <strong>unsigned</strong>. Así las fotos no inflan Supabase.</p>
+            <input id="cdn-cloud" class="w-full px-3 py-2.5 border border-gold-200 rounded-xl text-sm" placeholder="Cloud name (ej. dxxxx)" value="${(c.cloud||'').replace(/"/g,'')}">
+            <input id="cdn-preset" class="w-full px-3 py-2.5 border border-gold-200 rounded-xl text-sm" placeholder="Upload preset unsigned" value="${(c.preset||'').replace(/"/g,'')}">
+            <button type="button" onclick="guardarConfigCloudinary()" class="w-full btn-gold py-2.5 rounded-xl text-sm font-semibold">Guardar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(el);
+    }
+    function guardarConfigCloudinary() {
+      setCdn(document.getElementById('cdn-cloud')?.value, document.getElementById('cdn-preset')?.value);
+      document.getElementById('modal-cdn')?.remove();
+      mostrarToast('Cloudinary guardado en este navegador');
+    }
+    async function subirFotoCloudinary(dataUrl) {
+      const cfg = getCdn();
+      if (!cfg.cloud || !cfg.preset || !dataUrl) return dataUrl;
+      if (/^https?:\/\/res\.cloudinary\.com\//.test(dataUrl)) return dataUrl;
+      if (!String(dataUrl).startsWith('data:image')) return dataUrl;
+      try {
+        const blob = await (await fetch(dataUrl)).blob();
+        const fd = new FormData();
+        fd.append('file', blob, 'foto.jpg');
+        fd.append('upload_preset', cfg.preset);
+        fd.append('folder', 'flyhouse');
+        const r = await fetch('https://api.cloudinary.com/v1_1/' + encodeURIComponent(cfg.cloud) + '/image/upload', { method: 'POST', body: fd });
+        const j = await r.json();
+        if (j && j.secure_url) return j.secure_url;
+        console.warn('cloudinary', j);
+      } catch (e) { console.warn('cloudinary', e); }
+      return dataUrl;
+    }
+    async function procesarFoto(dataUrl) {
+      let out = dataUrl;
+      try {
+        if (typeof compressDataUrlSync === 'function' && String(dataUrl).startsWith('data:image')) {
+          out = await compressDataUrlSync(dataUrl, 1400, 0.72);
+        }
+      } catch (e) {}
+      try { out = await subirFotoCloudinary(out); } catch (e) {}
+      return out;
+    }
     function isValidFoto(src) {
       if (!src || typeof src !== 'string') return false;
       if (src.includes('[truncated]')) return false;
@@ -3368,7 +3427,9 @@
               reader.onerror = () => resolve(null);
               reader.readAsDataURL(file);
             });
-            if (dataUrl && typeof compressDataUrlSync === 'function') {
+            if (dataUrl && typeof procesarFoto === 'function') {
+              dataUrl = await procesarFoto(dataUrl);
+            } else if (dataUrl && typeof compressDataUrlSync === 'function') {
               dataUrl = await compressDataUrlSync(dataUrl, 900, 0.72);
             }
           }
@@ -4838,26 +4899,29 @@
             <div><h2 class="text-lg font-bold">Propiedades exclusivas</h2><p class="text-xs text-ink-500">${props.length} en inventario Life</p></div>
             <button type="button" onclick="abrirModalLifeProp()" class="btn-gold px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Nueva propiedad</button>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             ${props.length ? props.map(p => {
-              const foto = (p.fotos&&p.fotos[0])||'';
+              const fotos = (p.fotos||[]).filter(Boolean);
+              const foto = fotos[0]||'';
               const k = kpisLifeProp(p);
-              const ing = k.ingresos;
-              return `<div class="card-premium rounded-2xl overflow-hidden flex flex-col sm:flex-row border border-gold-100">
-                <div class="sm:w-40 h-36 sm:h-auto bg-ink-100 flex-shrink-0">${foto?`<img src="${foto}" class="w-full h-full object-cover">`:`<div class="w-full h-full min-h-[9rem] flex items-center justify-center text-ink-300"><i data-lucide="home" class="w-8 h-8"></i></div>`}</div>
-                <div class="p-4 flex-1 flex flex-col">
-                  <div class="flex justify-between gap-2"><h3 class="font-bold text-ink-800">${p.titulo||p.nombre}</h3>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full ${p.publicado!==false?'bg-emerald-50 text-emerald-700':'bg-ink-100 text-ink-500'}">${p.publicado!==false?'Publicada':'Borrador'}</span></div>
-                  <p class="text-xs text-ink-500 mt-1">${p.direccion||''} · ${p.distrito||p.ciudad||''}</p>
-                  <p class="text-sm font-bold text-gold-700 mt-2">S/ ${(Number(p.precioNoche)||0).toLocaleString()} / noche</p>
-                  <p class="text-[10px] text-ink-400">Inversión S/ ${(Number(p.inversion)||0).toLocaleString()} · Generado S/ ${Math.round(ing).toLocaleString()}</p>
-                  <div class="mt-auto pt-3 flex flex-wrap gap-2">
-                    <button type="button" onclick="verDashboardLifeProp('${p.id}')" class="text-xs font-semibold btn-gold px-3 py-1.5 rounded-lg">Desempeño</button>
-                    <button type="button" onclick="verDetalleLifeProp('${p.id}', false)" class="text-xs font-semibold text-gold-700 border border-gold-200 px-3 py-1.5 rounded-lg">Ficha</button>
-                    <button type="button" onclick="editarLifeProp('${p.id}')" class="text-xs border border-gold-200 px-3 py-1.5 rounded-lg">Editar</button>
-                    <button type="button" onclick="togglePublicarLife('${p.id}')" class="text-xs border border-gold-200 px-3 py-1.5 rounded-lg">${p.publicado===false?'Publicar':'Ocultar'}</button>
+              const occ = (k.res||[]).filter(r=>['Confirmada','En curso'].includes(r.estado)).length;
+              return `<button type="button" onclick="abrirCockpitProp('${p.id}')" class="text-left group rounded-3xl overflow-hidden border border-gold-100 bg-ink-950 shadow-lg hover:shadow-2xl hover:-translate-y-0.5 transition">
+                <div class="relative aspect-[16/10] bg-ink-800">
+                  ${foto?`<img src="${foto}" class="w-full h-full object-cover group-hover:scale-105 transition duration-700">`:`<div class="w-full h-full flex items-center justify-center text-ink-500">Sin foto</div>`}
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
+                  <span class="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider bg-white/95 text-ink-900 px-2 py-1 rounded-full">${p.uso||p.tipo||'Propiedad'}</span>
+                  <span class="absolute top-3 right-3 text-[10px] font-bold px-2 py-1 rounded-full ${p.publicado!==false?'bg-emerald-500 text-white':'bg-white/80 text-ink-600'}">${p.publicado!==false?'Live':'Draft'}</span>
+                  <div class="absolute bottom-3 left-3 right-3 text-white">
+                    <h3 class="font-bold text-lg leading-tight">${p.titulo||p.nombre||''}</h3>
+                    <p class="text-[11px] text-white/70">${p.distrito||p.ciudad||''}</p>
                   </div>
-                </div></div>`;
+                </div>
+                <div class="grid grid-cols-3 gap-px bg-ink-800 text-center text-white">
+                  <div class="bg-ink-900 py-3"><p class="text-[9px] uppercase text-white/40">Noche</p><p class="text-sm font-bold text-gold-400">S/ ${(Number(p.precioNoche)||0).toLocaleString()}</p></div>
+                  <div class="bg-ink-900 py-3"><p class="text-[9px] uppercase text-white/40">Generado</p><p class="text-sm font-bold text-emerald-400">S/ ${Math.round(k.ingresos).toLocaleString()}</p></div>
+                  <div class="bg-ink-900 py-3"><p class="text-[9px] uppercase text-white/40">Reservas</p><p class="text-sm font-bold">${occ}</p></div>
+                </div>
+              </button>`;
             }).join('') : '<p class="col-span-full text-center text-ink-400 py-12">Crea la primera propiedad exclusiva</p>'}
           </div></div>`;
       },
@@ -5869,70 +5933,168 @@ inventario: () => {
         mostrarToast('No se pudo leer el iCal. Revisa el enlace.');
       }
     }
+    function abrirCockpitProp(id, tab) {
+      window._lifePropTab = tab || window._lifePropTab || 'cine';
+      verDashboardLifeProp(id);
+    }
+    function calDaysOfMonth(ym) {
+      const [y,m] = (ym||new Date().toISOString().slice(0,7)).split('-').map(Number);
+      const first = new Date(y, m-1, 1);
+      const last = new Date(y, m, 0).getDate();
+      const pad = (first.getDay()+6)%7;
+      const days = [];
+      for (let i=0;i<pad;i++) days.push(null);
+      for (let d=1;d<=last;d++) days.push(y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'));
+      return days;
+    }
+    function reservasDeProp(id) {
+      return (data.lifeReservas||[]).filter(r => !r.oculto && String(r.propiedadId)===String(id));
+    }
+    function diaEstadoReserva(id, day) {
+      const rs = reservasDeProp(id);
+      const hit = rs.find(r => r.checkIn && r.checkOut && day >= r.checkIn && day < r.checkOut);
+      if (hit) return hit.estado==='Bloqueada'?'bloqueo':'ocupado';
+      return 'libre';
+    }
+    function guardarInvCasa(id) {
+      const p = (data.lifePropiedades||[]).find(x => String(x.id)===String(id));
+      if (!p) return;
+      if (!p.inventarioCasa) p.inventarioCasa = [];
+      const nombre = document.getElementById('ic-nombre')?.value.trim();
+      const cat = document.getElementById('ic-cat')?.value.trim() || 'General';
+      const cant = parseFloat(document.getElementById('ic-cant')?.value)||1;
+      const estado = document.getElementById('ic-estado')?.value || 'Ok';
+      if (!nombre) { mostrarToast('Nombre del ítem'); return; }
+      p.inventarioCasa.unshift({ id:'IC-'+Date.now(), nombre, cat, cant, estado });
+      saveSystemData();
+      abrirCockpitProp(id, 'inventario');
+    }
     function verDashboardLifeProp(id) {
       ensureLifeData();
       const p = (data.lifePropiedades||[]).find(x => String(x.id)===String(id));
       if (!p) return;
+      if (!p.inventarioCasa) p.inventarioCasa = [];
       const k = kpisLifeProp(p);
+      const T = window._lifePropTab || 'cine';
+      const fotos = (p.fotos||[]).filter(Boolean);
+      const cover = fotos[Number(p.coverIdx)||0] || fotos[0] || '';
+      const res = reservasDeProp(p.id);
+      const ym = window._lifeCalMes || new Date().toISOString().slice(0,7);
+      const days = calDaysOfMonth(ym);
+      const tabb = (key, label) => `<button type="button" onclick="window._lifePropTab='${key}';verDashboardLifeProp('${p.id}')" class="px-3 py-2 rounded-xl text-xs font-semibold ${T===key?'bg-gold-500 text-ink-900':'text-white/70 hover:bg-white/10'}">${label}</button>`;
+      let body = '';
+      if (T==='cine') {
+        body = `<div class="space-y-3">
+          <div class="relative rounded-2xl overflow-hidden bg-black aspect-[16/9]">
+            ${cover?`<img src="${cover}" class="w-full h-full object-cover">`:'<div class="w-full h-full flex items-center justify-center text-white/40">Sube fotos de esta propiedad</div>'}
+            <div class="absolute bottom-3 left-3 right-3 flex gap-2 overflow-x-auto">
+              ${fotos.map((f,i)=>`<button type="button" onclick="const x=(data.lifePropiedades||[]).find(z=>String(z.id)==='${p.id}'); if(x){x.coverIdx=${i}; saveSystemData();} verDashboardLifeProp('${p.id}')" class="w-16 h-12 rounded-lg overflow-hidden border-2 ${((p.coverIdx||0)==i)?'border-gold-400':'border-white/30'} flex-shrink-0"><img src="${f}" class="w-full h-full object-cover"></button>`).join('')}
+            </div>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-white">
+            <div class="rounded-xl bg-white/5 p-3"><p class="text-[10px] uppercase text-white/40">Tarifa</p><p class="font-bold text-gold-400">S/ ${(Number(p.precioNoche)||0).toLocaleString()}</p></div>
+            <div class="rounded-xl bg-white/5 p-3"><p class="text-[10px] uppercase text-white/40">Generado</p><p class="font-bold text-emerald-400">S/ ${Math.round(k.ingresos).toLocaleString()}</p></div>
+            <div class="rounded-xl bg-white/5 p-3"><p class="text-[10px] uppercase text-white/40">ROI</p><p class="font-bold">${k.roi.toFixed(1)}%</p></div>
+            <div class="rounded-xl bg-white/5 p-3"><p class="text-[10px] uppercase text-white/40">Equilibrio</p><p class="font-bold">${k.avanceEq.toFixed(0)}%</p></div>
+          </div>
+        </div>`;
+      } else if (T==='agenda') {
+        body = `<div class="text-white space-y-3">
+          <div class="flex items-center justify-between">
+            <button type="button" class="px-2 py-1 border border-white/20 rounded-lg" onclick="(function(){const d=new Date((window._lifeCalMes||'${ym}')+'-01'); d.setMonth(d.getMonth()-1); window._lifeCalMes=d.toISOString().slice(0,7); verDashboardLifeProp('${p.id}');})()">‹</button>
+            <p class="font-semibold">${ym}</p>
+            <button type="button" class="px-2 py-1 border border-white/20 rounded-lg" onclick="(function(){const d=new Date((window._lifeCalMes||'${ym}')+'-01'); d.setMonth(d.getMonth()+1); window._lifeCalMes=d.toISOString().slice(0,7); verDashboardLifeProp('${p.id}');})()">›</button>
+          </div>
+          <div class="grid grid-cols-7 gap-1 text-[10px] text-white/40 text-center">${['L','M','X','J','V','S','D'].map(x=>`<div>${x}</div>`).join('')}</div>
+          <div class="grid grid-cols-7 gap-1">
+            ${days.map(day => {
+              if (!day) return '<div></div>';
+              const st = diaEstadoReserva(p.id, day);
+              const cls = st==='ocupado'?'bg-emerald-600 text-white':st==='bloqueo'?'bg-red-700 text-white':'bg-white/10 text-white/80';
+              return `<div class="rounded-lg p-2 text-center text-[11px] ${cls}">${day.slice(8)}</div>`;
+            }).join('')}
+          </div>
+          <p class="text-[10px] text-white/40">Verde = reserva · Rojo = bloqueo · Gris = libre</p>
+          ${res.slice(0,8).map(r=>`<p class="text-xs text-white/80">${r.checkIn} → ${r.checkOut} · ${r.huesped||r.estado} · S/ ${Number(r.total||0).toLocaleString()}</p>`).join('')||'<p class="text-xs text-white/40">Sin reservas</p>'}
+          <button type="button" onclick="abrirModalLifeReserva()" class="btn-gold px-4 py-2 rounded-xl text-sm font-semibold">Nueva reserva / bloqueo</button>
+        </div>`;
+      } else if (T==='inventario') {
+        body = `<div class="text-white space-y-3">
+          <p class="text-sm text-white/60">Inventario de la unidad (ropa de cama, vajilla, amenities, llaves…)</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <input id="ic-nombre" class="px-2 py-2 text-xs rounded-xl bg-white/10 border border-white/15 text-white" placeholder="Ítem">
+            <input id="ic-cat" class="px-2 py-2 text-xs rounded-xl bg-white/10 border border-white/15 text-white" placeholder="Categoría">
+            <input id="ic-cant" type="number" class="px-2 py-2 text-xs rounded-xl bg-white/10 border border-white/15 text-white" placeholder="Cant." value="1">
+            <select id="ic-estado" class="px-2 py-2 text-xs rounded-xl bg-white/10 border border-white/15 text-white"><option>Ok</option><option>Reponer</option><option>Dañado</option></select>
+          </div>
+          <button type="button" onclick="guardarInvCasa('${p.id}')" class="btn-gold px-4 py-2 rounded-xl text-sm font-semibold">Agregar al inventario</button>
+          <div class="grid sm:grid-cols-2 gap-2">
+            ${(p.inventarioCasa||[]).map(it=>`<div class="rounded-xl border border-white/10 p-3 flex justify-between"><div><p class="font-semibold text-sm">${it.nombre}</p><p class="text-[11px] text-white/50">${it.cat} · x${it.cant}</p></div><span class="text-[10px] uppercase">${it.estado}</span></div>`).join('')||'<p class="text-xs text-white/40">Vacío</p>'}
+          </div>
+        </div>`;
+      } else if (T==='metricas') {
+        body = `<div class="text-white space-y-3">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div class="rounded-xl bg-white/5 p-3"><p class="text-[10px] uppercase text-white/40">Ingresos</p><p class="font-bold text-emerald-400">S/ ${Math.round(k.ingresos).toLocaleString()}</p></div>
+            <div class="rounded-xl bg-white/5 p-3"><p class="text-[10px] uppercase text-white/40">Costos</p><p class="font-bold text-red-400">S/ ${Math.round(k.costos).toLocaleString()}</p></div>
+            <div class="rounded-xl bg-white/5 p-3"><p class="text-[10px] uppercase text-white/40">Neto</p><p class="font-bold">S/ ${Math.round(k.neto).toLocaleString()}</p></div>
+            <div class="rounded-xl bg-white/5 p-3"><p class="text-[10px] uppercase text-white/40">ROI</p><p class="font-bold">${k.roi.toFixed(1)}%</p></div>
+          </div>
+          <div class="h-2 rounded-full bg-white/10"><div class="h-2 rounded-full bg-gold-500" style="width:${Math.min(100,k.avanceEq)}%"></div></div>
+          <p class="text-[10px] text-white/40">Punto de equilibrio ${k.avanceEq.toFixed(0)}%</p>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <select id="lm-tipo" class="px-2 py-2 text-xs rounded-xl bg-white/10 border border-white/15 text-white">
+              <option value="ingreso">Ingreso</option><option value="reserva">Reserva cobrada</option>
+              <option value="variable">Gasto variable</option><option value="servicio">Servicio</option>
+              <option value="fijo-item">Gasto fijo</option><option value="caja">Caja chica</option>
+              <option value="inversion">Inversión</option>
+            </select>
+            <input id="lm-cat" class="px-2 py-2 text-xs rounded-xl bg-white/10 border border-white/15 text-white" placeholder="Categoría">
+            <input id="lm-monto" type="number" class="px-2 py-2 text-xs rounded-xl bg-white/10 border border-white/15 text-white" placeholder="S/">
+            <input id="lm-fecha" type="date" class="px-2 py-2 text-xs rounded-xl bg-white/10 border border-white/15 text-white">
+            <input id="lm-cliente" class="px-2 py-2 text-xs rounded-xl bg-white/10 border border-white/15 text-white" placeholder="Cliente">
+            <input id="lm-nota" class="px-2 py-2 text-xs rounded-xl bg-white/10 border border-white/15 text-white" placeholder="Nota">
+            <input id="lm-sub" class="hidden">
+          </div>
+          <button type="button" onclick="guardarMovLife('${p.id}')" class="btn-gold px-4 py-2 rounded-xl text-sm font-semibold">Registrar movimiento</button>
+          <div class="max-h-40 overflow-y-auto text-xs text-white/70 space-y-1">
+            ${k.mov.slice(0,12).map(m=>`<p>${m.fecha||''} · ${m.tipo} · S/ ${Number(m.monto||0).toLocaleString()} · ${m.nota||''}</p>`).join('')||'<p>Sin movimientos</p>'}
+          </div>
+        </div>`;
+      } else {
+        body = `<div class="text-white text-sm space-y-2">
+          <p>${p.descripcion||'Sin descripción aún.'}</p>
+          <p class="text-white/50">${p.direccion||''} · ${p.distrito||''}</p>
+          <p class="text-white/50">${p.habitaciones||0} hab · ${p.banos||0} baños · ${p.huespedesMax||0} huéspedes</p>
+          <div class="flex flex-wrap gap-2 pt-2">
+            <button type="button" onclick="editarLifeProp('${p.id}')" class="border border-white/20 px-3 py-2 rounded-xl text-xs">Editar ficha</button>
+            <button type="button" onclick="togglePublicarLife('${p.id}')" class="border border-white/20 px-3 py-2 rounded-xl text-xs">${p.publicado===false?'Publicar':'Ocultar del catálogo'}</button>
+            <button type="button" onclick="sincronizarIcalProp('${p.id}')" class="border border-white/20 px-3 py-2 rounded-xl text-xs">Sync Airbnb</button>
+          </div>
+        </div>`;
+      }
       document.getElementById('modal-life-dash')?.remove();
       const el = document.createElement('div');
       el.id = 'modal-life-dash';
       el.className = 'fixed inset-0 z-[96]';
-      el.innerHTML = `<div class="absolute inset-0 bg-ink-900/55" onclick="this.parentElement.remove()"></div>
-        <div class="absolute inset-0 flex items-start justify-center overflow-y-auto p-4">
-          <div class="relative bg-white rounded-2xl w-full max-w-3xl my-6 border border-gold-200 overflow-hidden">
-            <div class="bg-ink-900 text-white p-5">
-              <p class="text-gold-400 text-[10px] uppercase tracking-wider">Libro de la propiedad · matriz</p>
-              <h3 class="text-xl font-bold mt-1">${p.titulo||p.nombre||''}</h3>
-              <p class="text-xs text-white/50">${p.uso||''} · ${p.ownerNombre||'sin propietario'} · ${k.vistas} vistas · ${k.inter} interacciones</p>
-            </div>
-            <div class="p-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Ingresos</p><p class="font-bold text-emerald-700">S/ ${Math.round(k.ingresos).toLocaleString()}</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Costos</p><p class="font-bold text-red-600">S/ ${Math.round(k.costos).toLocaleString()}</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">ROI</p><p class="font-bold ${k.roi>=0?'text-emerald-700':'text-red-600'}">${k.roi.toFixed(1)}%</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">ROAS</p><p class="font-bold">${k.roas.toFixed(2)}x</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Inversión</p><p class="font-bold">S/ ${Math.round(k.inversionTotal).toLocaleString()}</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Punto equilibrio</p><p class="font-bold">${k.avanceEq.toFixed(0)}%</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Conversión</p><p class="font-bold">${k.conv.toFixed(0)}%</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Neto</p><p class="font-bold">S/ ${Math.round(k.neto).toLocaleString()}</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Fijos mes</p><p class="font-bold">S/ ${Math.round(k.fijo||0).toLocaleString()}</p></div>
-              <div class="rounded-xl bg-cream-50 p-3"><p class="text-[10px] uppercase text-ink-400">Caja chica</p><p class="font-bold">S/ ${Math.round(k.caja||0).toLocaleString()}</p></div>
-            </div>
-            <div class="px-5"><div class="h-2 rounded-full bg-ink-100"><div class="h-2 rounded-full bg-gold-500" style="width:${Math.min(100,k.avanceEq)}%"></div></div>
-              <p class="text-[10px] text-ink-400 mt-1">Avance al punto de equilibrio (recuperar inversión)</p></div>
-            <div class="p-5 border-t border-gold-100 space-y-2">
-              <p class="text-xs font-semibold">Cargar movimiento del mes</p>
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                <select id="lm-tipo" class="px-2 py-2 text-xs border border-gold-200 rounded-xl">
-                  <option value="ingreso">Ingreso</option>
-                  <option value="reserva">Reserva cobrada</option>
-                  <option value="variable">Gasto variable</option>
-                  <option value="servicio">Servicio</option>
-                  <option value="fijo-item">Gasto fijo (ítem mensual)</option>
-                  <option value="caja">Caja chica</option>
-                  <option value="inversion">Inversión extra</option>
-                  <option value="prospecto">Prospecto no convertido</option>
-                </select>
-                <input id="lm-cat" class="px-2 py-2 text-xs border border-gold-200 rounded-xl" placeholder="Categoría (luz, agua, limpieza…)">
-                <input id="lm-sub" class="px-2 py-2 text-xs border border-gold-200 rounded-xl" placeholder="Subcategoría / ítem">
-                <input id="lm-monto" type="number" step="0.01" class="px-2 py-2 text-xs border border-gold-200 rounded-xl" placeholder="S/ monto">
-                <input id="lm-fecha" type="date" class="px-2 py-2 text-xs border border-gold-200 rounded-xl">
-                <input id="lm-cliente" class="px-2 py-2 text-xs border border-gold-200 rounded-xl" placeholder="Cliente / proveedor">
-                <input id="lm-nota" class="px-2 py-2 text-xs border border-gold-200 rounded-xl col-span-2 sm:col-span-3" placeholder="Detalle del movimiento">
+      el.innerHTML = `<div class="absolute inset-0 bg-black/80" onclick="this.parentElement.remove()"></div>
+        <div class="absolute inset-0 overflow-y-auto">
+          <div class="min-h-full bg-ink-950 text-white">
+            <div class="sticky top-0 z-10 bg-ink-950/90 backdrop-blur border-b border-white/10 px-4 py-3 flex flex-wrap items-center gap-2">
+              <button type="button" onclick="document.getElementById('modal-life-dash')?.remove()" class="text-white/60 hover:text-white text-sm">← Propiedades</button>
+              <div class="min-w-0 flex-1">
+                <p class="text-gold-400 text-[10px] uppercase tracking-[0.25em]">FLYHOUSE Life · cockpit</p>
+                <h3 class="font-bold truncate">${p.titulo||p.nombre||''}</h3>
               </div>
-              <button type="button" onclick="guardarMovLife('${p.id}')" class="btn-gold px-4 py-2 rounded-xl text-sm font-semibold">Registrar en el libro</button>
-              <p class="text-[10px] text-ink-400">El sistema cruza ingresos, fijos, variables, servicios y caja para ROI, ROAS y equilibrio.</p>
             </div>
-            <div class="px-5 pb-5 max-h-56 overflow-y-auto">
-              <p class="text-xs font-semibold mb-2">Historial</p>
-              ${k.mov.length?k.mov.map(m=>`<p class="text-xs py-1.5 border-b border-gold-50">${m.fecha||''} · <b>${m.tipo}</b> · ${m.cliente||''} · S/ ${Number(m.monto||0).toLocaleString()} · ${m.nota||''}</p>`).join(''):'<p class="text-xs text-ink-400">Sin eventos cargados aún.</p>'}
-              ${k.res.length?`<p class="text-xs font-semibold mt-3">Reservas del sistema</p>`+k.res.map(r=>`<p class="text-xs py-1 border-b border-gold-50">${r.checkIn||''} → ${r.checkOut||''} · ${r.huesped||''} · S/ ${Number(r.total||0).toLocaleString()}</p>`).join(''):''}
+            <div class="px-4 py-3 flex gap-1 overflow-x-auto">
+              ${tabb('cine','Cine')}
+              ${tabb('agenda','Calendario')}
+              ${tabb('inventario','Inventario')}
+              ${tabb('metricas','Métricas')}
+              ${tabb('ficha','Ficha')}
             </div>
-            <div class="p-4 border-t border-gold-100 flex gap-2">
-              <button type="button" onclick="sincronizarIcalProp('${p.id}')" class="flex-1 border border-gold-200 py-2.5 rounded-xl text-sm font-semibold">Sincronizar Airbnb</button>
-              <button type="button" onclick="abrirModalLifeReserva();document.getElementById('modal-life-dash')?.remove()" class="flex-1 btn-gold py-2.5 rounded-xl text-sm font-semibold">Nueva reserva</button>
-              <button type="button" onclick="document.getElementById('modal-life-dash')?.remove()" class="flex-1 border border-gold-200 py-2.5 rounded-xl text-sm">Cerrar</button>
-            </div>
+            <div class="px-4 pb-10">${body}</div>
           </div>
         </div>`;
       document.body.appendChild(el);
@@ -5978,7 +6140,8 @@ inventario: () => {
       const out = [];
       for (const f of files) {
         try {
-          const dataUrl = await compressImageFile(f, 900, 0.58);
+          let dataUrl = await compressImageFile(f, 900, 0.58);
+          if (dataUrl && typeof procesarFoto==='function') dataUrl = await procesarFoto(dataUrl);
           if (dataUrl) out.push(dataUrl);
         } catch (e) {}
       }
@@ -6896,6 +7059,7 @@ inventario: () => {
           r.readAsDataURL(f);
         });
       }
+      if (typeof procesarFoto==='function') dataUrl = await procesarFoto(dataUrl);
       if (tipo === 'antes') {
         _presFotoAntes = dataUrl;
         document.getElementById('pres-prev-antes').innerHTML = `<img src="${dataUrl}" class="w-28 h-20 object-cover rounded-lg border border-gold-200">`;
@@ -14361,17 +14525,17 @@ inventario: () => {
       const dep = Math.min(100, Math.max(0, parseFloat(document.getElementById('inv-depreciacion').value) || 0));
       document.getElementById('inv-valor-actual').value = (Math.round(costo * (1 - dep / 100) * 100) / 100).toFixed(2);
     }
-    function previewInvFoto(ev) {
+    async function previewInvFoto(ev) {
       const f = ev.target.files && ev.target.files[0];
       if (!f) return;
-      const r = new FileReader();
-      r.onload = () => {
-        invFotoData = r.result;
-        const img = document.getElementById('inv-foto-preview');
-        img.src = invFotoData;
-        img.classList.remove('hidden');
-      };
-      r.readAsDataURL(f);
+      const dataUrl = await new Promise(res => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.readAsDataURL(f);
+      });
+      invFotoData = (typeof procesarFoto==='function') ? await procesarFoto(dataUrl) : dataUrl;
+      const img = document.getElementById('inv-foto-preview');
+      if (img) { img.src = invFotoData; img.classList.remove('hidden'); }
     }
     function previewInvFactura(ev) {
       const f = ev.target.files && ev.target.files[0];
